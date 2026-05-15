@@ -1,0 +1,1844 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#f5f6ef" />
+<title>Koppel-Tracker</title>
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Koppel" />
+<meta name="mobile-web-app-capable" content="yes" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+<style>
+  :root {
+    --bg: #f5f6ef;
+    --surface: #ffffff;
+    --surface-2: #ebeee2;
+    --surface-3: #dde2cf;
+    --border: #c3cab1;
+    --border-soft: #d8ddc8;
+    --text: #1c2a1c;
+    --muted: #5a6c52;
+    --muted-soft: #8a9580;
+    --accent: #3d8a4d;
+    --accent-dim: #5ba169;
+    --success: #4a9a5e;
+    --warning: #b8842a;
+    --danger: #b8493d;
+    --radius: 10px;
+    --radius-sm: 6px;
+    --shadow: 0 4px 16px rgba(28, 42, 28, 0.06);
+    --header-h: 56px;
+    --nav-h: 64px;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+  body {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    font-size: 15px;
+    line-height: 1.45;
+  }
+  .mono { font-family: 'DM Mono', ui-monospace, monospace; }
+  button, input, select, textarea { font-family: inherit; color: inherit; }
+  button { cursor: pointer; }
+
+  /* ===== Layout ===== */
+  .app {
+    display: grid;
+    grid-template-rows: var(--header-h) 1fr calc(var(--nav-h) + var(--safe-bottom));
+    height: 100dvh;
+  }
+  header.topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border-soft);
+    z-index: 10;
+  }
+  .topbar h1 {
+    margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -0.01em;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .topbar h1::before {
+    content: ""; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent); box-shadow: 0 0 8px rgba(61, 138, 77, 0.5);
+  }
+  .topbar .right { display: flex; gap: 6px; }
+  .icon-btn {
+    background: transparent; border: 1px solid var(--border-soft);
+    color: var(--text); width: 36px; height: 36px; border-radius: var(--radius-sm);
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: background .15s, border-color .15s;
+  }
+  .icon-btn:hover, .icon-btn:focus { background: var(--surface-2); border-color: var(--border); }
+  .icon-btn svg { width: 18px; height: 18px; }
+
+  main#view { position: relative; overflow: hidden; }
+  .view-pane { position: absolute; inset: 0; display: none; overflow: auto; }
+  .view-pane.active { display: block; }
+  .view-pane.map-pane { overflow: hidden; }
+
+  /* ===== Bottom Nav ===== */
+  nav.bottom-nav {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    background: var(--surface);
+    border-top: 1px solid var(--border-soft);
+    padding-bottom: var(--safe-bottom);
+  }
+  nav.bottom-nav button {
+    background: transparent; border: 0; color: var(--muted);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 3px; padding: 6px 4px; font-size: 11px; font-weight: 500;
+    transition: color .15s;
+    border-top: 2px solid transparent;
+  }
+  nav.bottom-nav button svg { width: 20px; height: 20px; }
+  nav.bottom-nav button.active { color: var(--accent); border-top-color: var(--accent); }
+  nav.bottom-nav button:hover { color: var(--text); }
+
+  /* ===== FAB ===== */
+  .fab {
+    position: absolute;
+    right: 16px;
+    bottom: 16px;
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--bg);
+    border: 0;
+    box-shadow: 0 8px 20px rgba(61, 138, 77, 0.35);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 500;
+    font-weight: 700;
+  }
+  .fab svg { width: 24px; height: 24px; }
+  .fab:active { transform: scale(0.96); }
+
+  /* ===== Map ===== */
+  #map { width: 100%; height: 100%; background: var(--surface); }
+  .leaflet-container { background: var(--surface); font-family: inherit; }
+  .leaflet-control-zoom a,
+  .leaflet-bar a {
+    background: var(--surface-2); color: var(--text);
+    border-color: var(--border) !important;
+  }
+  .leaflet-bar a:hover { background: var(--surface-3); }
+  .leaflet-control-attribution {
+    background: rgba(255, 255, 255, 0.85) !important;
+    color: var(--muted) !important;
+    font-size: 10px !important;
+  }
+  .leaflet-control-attribution a { color: var(--accent) !important; }
+  .field-label {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+  .field-label-inner {
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    color: var(--text);
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    white-space: nowrap;
+    text-align: center;
+    line-height: 1.3;
+    box-shadow: 0 2px 6px rgba(30, 42, 28, 0.08);
+  }
+  .field-label-inner .label-count {
+    font-family: 'DM Mono', monospace;
+    font-weight: 500;
+    font-size: 10px;
+    color: var(--muted);
+  }
+  .field-label-inner.has-group {
+    border-color: var(--accent);
+  }
+  .leaflet-popup-content-wrapper {
+    background: var(--surface-2);
+    color: var(--text);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+  }
+  .leaflet-popup-tip { background: var(--surface-2); }
+  .leaflet-popup-content { margin: 12px 14px; font-size: 13px; }
+
+  /* Map controls overlay */
+  .map-overlay {
+    position: absolute;
+    top: 12px; left: 12px;
+    z-index: 500;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .map-overlay-btn {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 13px; font-weight: 500;
+    display: inline-flex; align-items: center; gap: 6px;
+    box-shadow: var(--shadow);
+  }
+  .map-overlay-btn svg { width: 14px; height: 14px; }
+  .map-overlay-btn:hover { background: var(--surface-3); }
+
+  /* ===== List & Cards ===== */
+  .content {
+    padding: 16px;
+    padding-bottom: 80px;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  .section-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin: 0 0 10px;
+    font-weight: 600;
+  }
+  .section-title + .section-title { margin-top: 24px; }
+  .filter-bar {
+    display: flex; gap: 8px; margin-bottom: 14px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .filter-bar::-webkit-scrollbar { display: none; }
+  .chip {
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    color: var(--muted);
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 12px; font-weight: 500;
+    white-space: nowrap;
+  }
+  .chip.active {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 10px;
+    display: flex; align-items: flex-start; gap: 12px;
+    transition: border-color .15s, transform .15s;
+  }
+  .card.clickable:hover { border-color: var(--border); }
+  .card.clickable:active { transform: scale(0.99); }
+  .swatch {
+    width: 4px; align-self: stretch; border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .card-body { flex: 1; min-width: 0; }
+  .card-title {
+    font-weight: 600; font-size: 15px; margin: 0 0 2px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-sub {
+    color: var(--muted); font-size: 12px;
+    display: flex; gap: 12px; flex-wrap: wrap;
+  }
+  .card-sub .mono { font-size: 12px; }
+  .badge {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px; font-weight: 500;
+  }
+  .badge.warning { background: rgba(184, 132, 42, 0.12); border-color: rgba(184, 132, 42, 0.3); color: var(--warning); }
+  .badge.danger { background: rgba(184, 73, 61, 0.1); border-color: rgba(184, 73, 61, 0.3); color: var(--danger); }
+  .badge.success { background: rgba(74, 154, 94, 0.12); border-color: rgba(74, 154, 94, 0.3); color: var(--success); }
+  .badge.accent { background: rgba(61, 138, 77, 0.12); border-color: rgba(61, 138, 77, 0.3); color: var(--accent); }
+  .card-actions {
+    display: flex; gap: 4px; align-items: center;
+    flex-shrink: 0;
+  }
+
+  .empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+  }
+  .empty h3 { color: var(--text); margin: 0 0 8px; font-weight: 600; }
+  .empty p { margin: 0 0 16px; font-size: 13px; }
+
+  /* ===== Timeline ===== */
+  .timeline-row {
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-soft);
+    align-items: center;
+  }
+  .timeline-row:last-child { border-bottom: 0; }
+  .timeline-label {
+    font-weight: 500; font-size: 13px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .timeline-label small { display: block; color: var(--muted); font-weight: 400; font-size: 11px; }
+  .timeline-track {
+    position: relative;
+    height: 24px;
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-soft);
+    overflow: hidden;
+  }
+  .timeline-bar {
+    position: absolute;
+    top: 2px; bottom: 2px;
+    border-radius: 3px;
+    overflow: hidden;
+    color: var(--bg);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 0 4px;
+    display: flex; align-items: center;
+    white-space: nowrap;
+  }
+  .timeline-axis {
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    gap: 12px;
+    color: var(--muted);
+    font-size: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border-soft);
+    margin-bottom: 4px;
+  }
+  .timeline-axis-ticks {
+    display: flex; justify-content: space-between;
+  }
+
+  /* ===== Modal ===== */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(30, 42, 28, 0.35);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    display: none;
+    align-items: flex-end; justify-content: center;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    width: 100%;
+    max-width: 560px;
+    max-height: 92dvh;
+    border-radius: 16px 16px 0 0;
+    border-top: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    animation: slideUp .25s ease;
+  }
+  @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .modal-head {
+    padding: 16px 18px 12px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .modal-head h2 { margin: 0; font-size: 16px; font-weight: 600; }
+  .modal-body { padding: 16px 18px; overflow-y: auto; flex: 1; }
+  .modal-foot {
+    padding: 12px 18px calc(12px + var(--safe-bottom));
+    display: flex; gap: 8px; justify-content: flex-end;
+    border-top: 1px solid var(--border-soft);
+  }
+  @media (min-width: 640px) {
+    .modal-backdrop { align-items: center; }
+    .modal { border-radius: 16px; max-height: 86vh; }
+  }
+
+  /* ===== Forms ===== */
+  .field { margin-bottom: 14px; }
+  .field label {
+    display: block;
+    font-size: 12px; font-weight: 500;
+    color: var(--muted);
+    margin-bottom: 6px;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .field input[type="text"],
+  .field input[type="number"],
+  .field input[type="date"],
+  .field input[type="datetime-local"],
+  .field select,
+  .field textarea {
+    width: 100%;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    transition: border-color .15s;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    outline: 0; border-color: var(--accent);
+  }
+  .field textarea { resize: vertical; min-height: 64px; }
+  .field-row {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  }
+  .color-row {
+    display: flex; gap: 6px; flex-wrap: wrap;
+  }
+  .color-dot {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: transform .1s;
+  }
+  .color-dot:hover { transform: scale(1.1); }
+  .color-dot.selected { border-color: var(--text); }
+
+  .btn {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 9px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 14px; font-weight: 500;
+    transition: background .15s, border-color .15s;
+  }
+  .btn:hover { background: var(--surface-3); }
+  .btn.primary {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+  .btn.primary:hover { background: #4f9c5e; }
+  .btn.danger {
+    background: transparent;
+    color: var(--danger);
+    border-color: rgba(184, 73, 61, 0.3);
+  }
+  .btn.danger:hover { background: rgba(184, 73, 61, 0.08); }
+  .btn.ghost { background: transparent; border-color: transparent; color: var(--muted); }
+  .btn.ghost:hover { color: var(--text); background: var(--surface-2); }
+  .btn.full { width: 100%; }
+  .btn-row { display: flex; gap: 8px; }
+
+  .alert {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .alert.warning { border-left-color: var(--warning); }
+  .alert.danger { border-left-color: var(--danger); }
+  .alert strong { color: var(--text); display: block; margin-bottom: 2px; }
+
+  /* Photos */
+  .photo-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .photo-thumb {
+    aspect-ratio: 1;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background: var(--surface-2);
+    border: 1px solid var(--border-soft);
+    position: relative;
+  }
+  .photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .photo-thumb .rm {
+    position: absolute; top: 4px; right: 4px;
+    background: rgba(30, 42, 28, 0.75);
+    border: 0; color: #ffffff;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: calc(var(--nav-h) + 20px + var(--safe-bottom));
+    left: 50%; transform: translateX(-50%);
+    background: var(--text);
+    color: var(--surface);
+    padding: 10px 16px;
+    border-radius: var(--radius);
+    border: 1px solid var(--text);
+    font-size: 13px;
+    z-index: 2000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s, transform .2s;
+    box-shadow: var(--shadow);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(-4px); }
+
+  /* Detail */
+  .detail-head {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 16px;
+  }
+  .detail-head .swatch-big {
+    width: 8px; align-self: stretch; min-height: 44px;
+    border-radius: 4px;
+  }
+  .detail-head h2 { margin: 0; font-size: 20px; }
+  .detail-head .sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 12px;
+  }
+  .stat .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .stat .stat-value { font-family: 'DM Mono', monospace; font-size: 20px; font-weight: 500; margin-top: 2px; }
+  .stat .stat-value.small { font-size: 14px; }
+
+  .hist-row {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-soft);
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 12px;
+  }
+  .hist-row:last-child { border-bottom: 0; }
+  .hist-row .hist-main { flex: 1; min-width: 0; }
+  .hist-row .hist-dates { color: var(--muted); font-size: 12px; font-family: 'DM Mono', monospace; }
+  .hist-row .hist-name { font-weight: 500; }
+
+  /* Settings list */
+  .settings-list .card { cursor: pointer; }
+
+  /* Reminder banner */
+  .reminder-banner {
+    margin: 16px;
+    background: rgba(184, 132, 42, 0.08);
+    border: 1px solid rgba(184, 132, 42, 0.3);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    font-size: 13px;
+    color: var(--text);
+  }
+  .reminder-banner strong { color: var(--warning); }
+  .reminder-banner ul { margin: 6px 0 0; padding-left: 18px; color: var(--muted); }
+
+  /* leaflet-draw dark adjustments */
+  .leaflet-draw-toolbar a { background-color: var(--surface-2) !important; }
+  .leaflet-draw-actions a {
+    background-color: var(--surface-2) !important;
+    color: var(--text) !important;
+    border-color: var(--border) !important;
+  }
+
+  /* Scrollbars */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border); }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <h1>Koppel-Tracker</h1>
+    <div class="right">
+      <button class="icon-btn" id="btn-locate" title="Mein Standort">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+      </button>
+      <button class="icon-btn" id="btn-settings" title="Einstellungen">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="view">
+    <section class="view-pane map-pane active" data-view="map">
+      <div id="map"></div>
+      <div class="map-overlay">
+        <button class="map-overlay-btn" id="btn-fit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V3h4M21 7V3h-4M3 17v4h4M21 17v4h-4"/></svg> Felder zeigen</button>
+      </div>
+      <button class="fab" id="fab-move" title="Umtrieb erfassen">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+      </button>
+    </section>
+
+    <section class="view-pane" data-view="list">
+      <div class="content" id="content-list"></div>
+    </section>
+
+    <section class="view-pane" data-view="timeline">
+      <div class="content" id="content-timeline"></div>
+    </section>
+
+    <section class="view-pane" data-view="history">
+      <div class="content" id="content-history"></div>
+    </section>
+
+    <section class="view-pane" data-view="manage">
+      <div class="content" id="content-manage"></div>
+    </section>
+  </main>
+
+  <nav class="bottom-nav">
+    <button data-target="map" class="active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg>
+      <span>Karte</span>
+    </button>
+    <button data-target="list">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>
+      <span>Liste</span>
+    </button>
+    <button data-target="timeline">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="14" height="3" rx="1"/><rect x="7" y="11" width="14" height="3" rx="1"/><rect x="5" y="17" width="12" height="3" rx="1"/></svg>
+      <span>Timeline</span>
+    </button>
+    <button data-target="history">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg>
+      <span>Historie</span>
+    </button>
+    <button data-target="manage">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      <span>Verwalten</span>
+    </button>
+  </nav>
+</div>
+
+<div class="modal-backdrop" id="modal-root"></div>
+<div class="toast" id="toast"></div>
+
+<input type="file" id="file-import" accept=".json,.geojson,application/json,application/geo+json" style="display:none" />
+<input type="file" id="file-photo" accept="image/*" capture="environment" multiple style="display:none" />
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+<script src="https://unpkg.com/@turf/turf@7.1.0/turf.min.js"></script>
+
+<script>
+/* =========================================================
+   Koppel-Tracker
+   Standalone HTML, localStorage + IndexedDB (Fotos)
+   ========================================================= */
+
+const STORAGE_KEY = 'koppel_tracker_v1';
+const DB_NAME = 'koppel_tracker_photos';
+const DB_STORE = 'photos';
+
+const GROUP_COLORS = [
+  '#3d8a4d', '#d97706', '#7c3aed', '#0891b2',
+  '#dc2626', '#65a30d', '#db2777', '#ca8a04',
+  '#0d9488', '#6b7280'
+];
+
+const CATEGORIES = [
+  'Milchkühe', 'Trockensteher', 'Jungrinder', 'Kälber',
+  'Kalbinnen', 'Bullen', 'Mutterkühe', 'Sonstige'
+];
+
+/* ----- State ----- */
+let state = {
+  fields: [],      // {id, name, geojson, areaHa, notes, createdAt}
+  groups: [],      // {id, name, category, count, color, notes}
+  movements: [],   // {id, groupId, fieldId, fromDate, toDate|null, note, photoIds: []}
+  settings: { reminderDays: 14 }
+};
+
+/* ----- Persistence ----- */
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      state = { ...state, ...parsed };
+      state.settings = { ...{ reminderDays: 14 }, ...(parsed.settings || {}) };
+    }
+  } catch (e) { console.error('loadState', e); }
+}
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (e) {
+    toast('Fehler beim Speichern (Speicher voll?)', 'danger');
+    console.error(e);
+  }
+}
+
+/* ----- IndexedDB for photos ----- */
+let dbPromise = null;
+function db() {
+  if (dbPromise) return dbPromise;
+  dbPromise = new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(DB_STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  return dbPromise;
+}
+async function savePhoto(id, blob) {
+  const d = await db();
+  return new Promise((res, rej) => {
+    const tx = d.transaction(DB_STORE, 'readwrite');
+    tx.objectStore(DB_STORE).put(blob, id);
+    tx.oncomplete = () => res();
+    tx.onerror = () => rej(tx.error);
+  });
+}
+async function getPhoto(id) {
+  const d = await db();
+  return new Promise((res, rej) => {
+    const tx = d.transaction(DB_STORE, 'readonly');
+    const req = tx.objectStore(DB_STORE).get(id);
+    req.onsuccess = () => res(req.result);
+    req.onerror = () => rej(req.error);
+  });
+}
+async function deletePhoto(id) {
+  const d = await db();
+  return new Promise((res) => {
+    const tx = d.transaction(DB_STORE, 'readwrite');
+    tx.objectStore(DB_STORE).delete(id);
+    tx.oncomplete = () => res();
+  });
+}
+
+/* ----- Helpers ----- */
+const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
+const $ = (sel, ctx = document) => ctx.querySelector(sel);
+const $$ = (sel, ctx = document) => [...ctx.querySelectorAll(sel)];
+const fmtDate = (d) => {
+  if (!d) return '–';
+  const dt = typeof d === 'string' ? new Date(d) : d;
+  return dt.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+};
+const fmtDateShort = (d) => {
+  if (!d) return '–';
+  const dt = typeof d === 'string' ? new Date(d) : d;
+  return dt.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+};
+const daysBetween = (a, b) => Math.floor((new Date(b) - new Date(a)) / 86400000);
+const today = () => new Date().toISOString().slice(0, 10);
+
+function getCurrentMovement(groupId) {
+  return state.movements.find(m => m.groupId === groupId && !m.toDate);
+}
+function getFieldCurrentGroups(fieldId) {
+  return state.movements
+    .filter(m => m.fieldId === fieldId && !m.toDate)
+    .map(m => state.groups.find(g => g.id === m.groupId))
+    .filter(Boolean);
+}
+function getFieldRestDays(fieldId) {
+  const current = state.movements.find(m => m.fieldId === fieldId && !m.toDate);
+  if (current) return 0;
+  const past = state.movements
+    .filter(m => m.fieldId === fieldId && m.toDate)
+    .sort((a, b) => new Date(b.toDate) - new Date(a.toDate));
+  if (!past.length) return null;
+  return daysBetween(past[0].toDate, today());
+}
+function getFieldOccupiedDaysThisYear(fieldId) {
+  const yearStart = new Date(new Date().getFullYear(), 0, 1);
+  const now = new Date();
+  let total = 0;
+  state.movements
+    .filter(m => m.fieldId === fieldId)
+    .forEach(m => {
+      const from = new Date(m.fromDate);
+      const to = m.toDate ? new Date(m.toDate) : now;
+      const start = from > yearStart ? from : yearStart;
+      const end = to < now ? to : now;
+      if (end > start) total += daysBetween(start, end);
+    });
+  return total;
+}
+function findFieldContainingPoint(lat, lng) {
+  const pt = turf.point([lng, lat]);
+  for (const f of state.fields) {
+    try {
+      if (turf.booleanPointInPolygon(pt, f.geojson)) return f;
+    } catch (e) { /* skip invalid */ }
+  }
+  return null;
+}
+function calcAreaHa(geojson) {
+  try {
+    return turf.area(geojson) / 10000;
+  } catch { return 0; }
+}
+
+/* ----- Toast ----- */
+let toastTimer = null;
+function toast(msg, type = '') {
+  const el = $('#toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + type;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+/* ============================================================
+   MAP VIEW
+   ============================================================ */
+let map = null;
+let fieldsLayer = null;
+let drawnItems = null;
+let drawControl = null;
+let locationMarker = null;
+
+function initMap() {
+  map = L.map('map', {
+    center: [51.5, 9.8], // Mitte Deutschland
+    zoom: 7,
+    zoomControl: false,
+  });
+  L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+  // CARTO Positron — helles, neutrales Theme
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap &copy; CARTO',
+    subdomains: 'abcd',
+    maxZoom: 19,
+  }).addTo(map);
+
+  fieldsLayer = L.featureGroup().addTo(map);
+  drawnItems = L.featureGroup().addTo(map);
+
+  renderFieldsOnMap();
+}
+
+function fieldColor(field) {
+  const groups = getFieldCurrentGroups(field.id);
+  if (groups.length === 0) return { color: '#8a957f', fill: '#8a957f', fillOpacity: 0.1 };
+  if (groups.length === 1) return { color: groups[0].color, fill: groups[0].color, fillOpacity: 0.3 };
+  return { color: '#b8842a', fill: '#b8842a', fillOpacity: 0.25 };
+}
+
+function renderFieldsOnMap() {
+  if (!fieldsLayer) return;
+  fieldsLayer.clearLayers();
+  state.fields.forEach(f => {
+    if (!f.geojson) return;
+    const { color, fill, fillOpacity } = fieldColor(f);
+    const groups = getFieldCurrentGroups(f.id);
+    const layer = L.geoJSON(f.geojson, {
+      style: { color, weight: 2, fillColor: fill, fillOpacity }
+    });
+    // Label
+    try {
+      const centroid = turf.centroid(f.geojson);
+      const [lng, lat] = centroid.geometry.coordinates;
+      const labelHtml = groups.length
+        ? `<div class="field-label-inner has-group"><div>${escapeHtml(f.name)}</div><div class="label-count">${groups.map(g => escapeHtml(g.name) + ' · ' + g.count).join(' / ')}</div></div>`
+        : `<div class="field-label-inner"><div>${escapeHtml(f.name)}</div><div class="label-count">leer · ${f.areaHa.toFixed(1)} ha</div></div>`;
+      L.marker([lat, lng], {
+        icon: L.divIcon({ className: 'field-label', html: labelHtml, iconSize: null })
+      }).addTo(fieldsLayer);
+    } catch {}
+    layer.on('click', () => openFieldDetail(f.id));
+    fieldsLayer.addLayer(layer);
+  });
+}
+
+function fitToFields() {
+  if (!state.fields.length) {
+    toast('Noch keine Felder angelegt');
+    return;
+  }
+  const bounds = fieldsLayer.getBounds();
+  if (bounds.isValid()) map.fitBounds(bounds, { padding: [40, 40] });
+}
+
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/* ============================================================
+   LIST VIEW – "Wo ist wer?"
+   ============================================================ */
+let listMode = 'group'; // 'group' | 'field'
+
+function renderList() {
+  const root = $('#content-list');
+  root.innerHTML = `
+    <div class="filter-bar">
+      <button class="chip ${listMode === 'group' ? 'active' : ''}" data-mode="group">Nach Gruppe</button>
+      <button class="chip ${listMode === 'field' ? 'active' : ''}" data-mode="field">Nach Feld</button>
+    </div>
+    <div id="list-body"></div>
+  `;
+  $$('#content-list .chip').forEach(el => el.addEventListener('click', () => {
+    listMode = el.dataset.mode;
+    renderList();
+  }));
+  const body = $('#list-body');
+  if (listMode === 'group') renderListByGroup(body);
+  else renderListByField(body);
+}
+
+function renderListByGroup(body) {
+  if (!state.groups.length) {
+    body.innerHTML = emptyState('Keine Tiergruppen', 'Lege erst Gruppen an, um den Überblick zu behalten.', 'Gruppe anlegen', () => openGroupEdit());
+    return;
+  }
+  const cards = state.groups.map(g => {
+    const mv = getCurrentMovement(g.id);
+    const field = mv ? state.fields.find(f => f.id === mv.fieldId) : null;
+    const since = mv ? daysBetween(mv.fromDate, today()) : null;
+    const longStay = since !== null && since >= state.settings.reminderDays;
+    return `
+      <div class="card clickable" data-group="${g.id}">
+        <div class="swatch" style="background:${g.color}"></div>
+        <div class="card-body">
+          <div class="card-title">${escapeHtml(g.name)} <span class="badge">${g.count} Tiere</span></div>
+          <div class="card-sub">
+            <span>${field ? '📍 ' + escapeHtml(field.name) : '⚠ kein Feld zugewiesen'}</span>
+            ${mv ? `<span class="mono">seit ${fmtDate(mv.fromDate)} · ${since} Tage</span>` : ''}
+            ${longStay ? '<span class="badge warning">lange Belegung</span>' : ''}
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+  body.innerHTML = cards;
+  $$('.card[data-group]', body).forEach(el => el.addEventListener('click', () => openGroupDetail(el.dataset.group)));
+}
+
+function renderListByField(body) {
+  if (!state.fields.length) {
+    body.innerHTML = emptyState('Keine Felder', 'Lege erst Felder an oder importiere GeoJSON.', 'Feld anlegen', () => switchView('manage'));
+    return;
+  }
+  const cards = state.fields.map(f => {
+    const groups = getFieldCurrentGroups(f.id);
+    const rest = getFieldRestDays(f.id);
+    return `
+      <div class="card clickable" data-field="${f.id}">
+        <div class="swatch" style="background:${groups[0]?.color || 'var(--border)'}"></div>
+        <div class="card-body">
+          <div class="card-title">${escapeHtml(f.name)} <span class="badge">${f.areaHa.toFixed(1)} ha</span></div>
+          <div class="card-sub">
+            ${groups.length
+              ? '<span>' + groups.map(g => '🐄 ' + escapeHtml(g.name) + ' (' + g.count + ')').join(', ') + '</span>'
+              : (rest === null ? '<span class="badge">noch nie belegt</span>' : `<span class="badge success">Weideruhe ${rest}d</span>`)
+            }
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+  body.innerHTML = cards;
+  $$('.card[data-field]', body).forEach(el => el.addEventListener('click', () => openFieldDetail(el.dataset.field)));
+}
+
+function emptyState(title, desc, btnLabel, btnFn) {
+  const html = `<div class="empty">
+    <h3>${escapeHtml(title)}</h3>
+    <p>${escapeHtml(desc)}</p>
+    ${btnLabel ? `<button class="btn primary" id="empty-btn">${escapeHtml(btnLabel)}</button>` : ''}
+  </div>`;
+  setTimeout(() => { if (btnFn) $('#empty-btn')?.addEventListener('click', btnFn); }, 0);
+  return html;
+}
+
+/* ============================================================
+   TIMELINE
+   ============================================================ */
+let timelineDays = 60;
+
+function renderTimeline() {
+  const root = $('#content-timeline');
+  if (!state.fields.length) {
+    root.innerHTML = emptyState('Keine Daten für Timeline', 'Lege Felder und Umtriebe an, um die Rotation zu sehen.', '', null);
+    return;
+  }
+  const ranges = [
+    { d: 30, label: '30 Tage' },
+    { d: 60, label: '60 Tage' },
+    { d: 180, label: '6 Monate' },
+    { d: 365, label: '1 Jahr' }
+  ];
+  const now = new Date();
+  const start = new Date(now); start.setDate(start.getDate() - timelineDays);
+
+  const axis = timelineAxisLabels(start, now);
+
+  root.innerHTML = `
+    <h2 class="section-title">Belegung pro Feld</h2>
+    <div class="filter-bar">
+      ${ranges.map(r => `<button class="chip ${timelineDays === r.d ? 'active' : ''}" data-d="${r.d}">${r.label}</button>`).join('')}
+    </div>
+    <div class="timeline-axis">
+      <div></div>
+      <div class="timeline-axis-ticks">${axis.map(a => `<span>${a}</span>`).join('')}</div>
+    </div>
+    ${state.fields.map(f => renderTimelineRow(f, start, now)).join('')}
+  `;
+  $$('.chip', root).forEach(el => el.addEventListener('click', () => {
+    timelineDays = +el.dataset.d;
+    renderTimeline();
+  }));
+}
+
+function timelineAxisLabels(start, end) {
+  const labels = [];
+  const total = end - start;
+  const steps = 6;
+  for (let i = 0; i <= steps; i++) {
+    const t = new Date(start.getTime() + (total * i) / steps);
+    labels.push(fmtDateShort(t));
+  }
+  return labels;
+}
+
+function renderTimelineRow(field, start, end) {
+  const total = end - start;
+  const movements = state.movements
+    .filter(m => m.fieldId === field.id)
+    .filter(m => {
+      const mEnd = m.toDate ? new Date(m.toDate) : end;
+      return mEnd >= start;
+    });
+  const bars = movements.map(m => {
+    const g = state.groups.find(gr => gr.id === m.groupId);
+    const mStart = new Date(m.fromDate);
+    const mEnd = m.toDate ? new Date(m.toDate) : end;
+    const left = Math.max(0, (mStart - start) / total) * 100;
+    const width = Math.min(100 - left, ((mEnd - Math.max(mStart, start)) / total) * 100);
+    if (width <= 0) return '';
+    return `<div class="timeline-bar" style="left:${left}%;width:${width}%;background:${g?.color || '#8a957f'};" title="${escapeHtml(g?.name || '')}: ${fmtDate(m.fromDate)} – ${m.toDate ? fmtDate(m.toDate) : 'aktuell'}">${width > 8 ? escapeHtml(g?.name || '') : ''}</div>`;
+  }).join('');
+  return `
+    <div class="timeline-row">
+      <div class="timeline-label">${escapeHtml(field.name)}<small>${field.areaHa.toFixed(1)} ha</small></div>
+      <div class="timeline-track">${bars}</div>
+    </div>`;
+}
+
+/* ============================================================
+   HISTORY – pro Gruppe
+   ============================================================ */
+let historyGroupId = null;
+
+function renderHistory() {
+  const root = $('#content-history');
+  if (!state.groups.length) {
+    root.innerHTML = emptyState('Keine Gruppen', 'Lege Gruppen an, um die Historie zu sehen.', '', null);
+    return;
+  }
+  if (!historyGroupId || !state.groups.find(g => g.id === historyGroupId)) {
+    historyGroupId = state.groups[0].id;
+  }
+  const g = state.groups.find(gr => gr.id === historyGroupId);
+  const mvs = state.movements
+    .filter(m => m.groupId === historyGroupId)
+    .sort((a, b) => new Date(b.fromDate) - new Date(a.fromDate));
+
+  root.innerHTML = `
+    <h2 class="section-title">Gruppe wählen</h2>
+    <div class="filter-bar">
+      ${state.groups.map(gr => `<button class="chip ${gr.id === historyGroupId ? 'active' : ''}" data-g="${gr.id}" style="${gr.id === historyGroupId ? '' : 'border-left:3px solid ' + gr.color}">${escapeHtml(gr.name)}</button>`).join('')}
+    </div>
+    <h2 class="section-title">Verlauf — ${escapeHtml(g.name)}</h2>
+    ${mvs.length === 0 ? '<div class="empty"><p>Noch keine Umtriebe.</p></div>' :
+      mvs.map(m => {
+        const f = state.fields.find(fl => fl.id === m.fieldId);
+        const days = m.toDate ? daysBetween(m.fromDate, m.toDate) : daysBetween(m.fromDate, today());
+        return `
+          <div class="hist-row">
+            <div class="hist-main">
+              <div class="hist-name">${escapeHtml(f?.name || 'unbekanntes Feld')}</div>
+              <div class="hist-dates">${fmtDate(m.fromDate)} – ${m.toDate ? fmtDate(m.toDate) : 'aktuell'} · ${days} Tage</div>
+            </div>
+            ${!m.toDate ? '<span class="badge accent">aktuell</span>' : ''}
+          </div>`;
+      }).join('')
+    }
+  `;
+  $$('.chip', root).forEach(el => el.addEventListener('click', () => {
+    historyGroupId = el.dataset.g;
+    renderHistory();
+  }));
+}
+
+/* ============================================================
+   MANAGE – Felder & Gruppen
+   ============================================================ */
+function renderManage() {
+  const root = $('#content-manage');
+  const reminder = buildReminderBanner();
+  root.innerHTML = `
+    ${reminder}
+    <h2 class="section-title">Felder (${state.fields.length})</h2>
+    <div class="btn-row" style="margin-bottom:12px">
+      <button class="btn primary" id="btn-add-field-draw">+ Auf Karte zeichnen</button>
+      <button class="btn" id="btn-add-field-import">GeoJSON importieren</button>
+    </div>
+    <div class="settings-list" id="fields-list"></div>
+
+    <h2 class="section-title">Tiergruppen (${state.groups.length})</h2>
+    <div class="btn-row" style="margin-bottom:12px">
+      <button class="btn primary" id="btn-add-group">+ Gruppe anlegen</button>
+    </div>
+    <div class="settings-list" id="groups-list"></div>
+  `;
+
+  $('#fields-list').innerHTML = state.fields.length
+    ? state.fields.map(f => `
+        <div class="card clickable" data-field-edit="${f.id}">
+          <div class="swatch" style="background:${getFieldCurrentGroups(f.id)[0]?.color || 'var(--border)'}"></div>
+          <div class="card-body">
+            <div class="card-title">${escapeHtml(f.name)}</div>
+            <div class="card-sub"><span class="mono">${f.areaHa.toFixed(2)} ha</span></div>
+          </div>
+        </div>
+      `).join('')
+    : '<div class="empty"><p>Noch keine Felder.</p></div>';
+
+  $('#groups-list').innerHTML = state.groups.length
+    ? state.groups.map(g => `
+        <div class="card clickable" data-group-edit="${g.id}">
+          <div class="swatch" style="background:${g.color}"></div>
+          <div class="card-body">
+            <div class="card-title">${escapeHtml(g.name)} <span class="badge">${g.count}</span></div>
+            <div class="card-sub"><span>${escapeHtml(g.category || '')}</span></div>
+          </div>
+        </div>
+      `).join('')
+    : '<div class="empty"><p>Noch keine Gruppen.</p></div>';
+
+  $('#btn-add-field-draw').addEventListener('click', startDrawField);
+  $('#btn-add-field-import').addEventListener('click', () => $('#file-import').click());
+  $('#btn-add-group').addEventListener('click', () => openGroupEdit());
+  $$('[data-field-edit]', root).forEach(el => el.addEventListener('click', () => openFieldDetail(el.dataset.fieldEdit)));
+  $$('[data-group-edit]', root).forEach(el => el.addEventListener('click', () => openGroupDetail(el.dataset.groupEdit)));
+}
+
+function buildReminderBanner() {
+  const longStays = state.groups
+    .map(g => {
+      const mv = getCurrentMovement(g.id);
+      if (!mv) return null;
+      const d = daysBetween(mv.fromDate, today());
+      if (d < state.settings.reminderDays) return null;
+      const f = state.fields.find(fl => fl.id === mv.fieldId);
+      return { g, f, d };
+    })
+    .filter(Boolean);
+  if (!longStays.length) return '';
+  return `<div class="reminder-banner">
+    <strong>⚠ Lange Belegung (≥ ${state.settings.reminderDays} Tage)</strong>
+    <ul>
+      ${longStays.map(x => `<li>${escapeHtml(x.g.name)} auf ${escapeHtml(x.f?.name || '?')} — ${x.d} Tage</li>`).join('')}
+    </ul>
+  </div>`;
+}
+
+/* ============================================================
+   FIELD DRAWING & IMPORT
+   ============================================================ */
+function startDrawField() {
+  switchView('map');
+  toast('Feld auf der Karte zeichnen — Polygon schließen mit Doppelklick');
+  if (!drawControl) {
+    drawControl = new L.Draw.Polygon(map, {
+      shapeOptions: { color: '#3d8a4d', weight: 2, fillOpacity: 0.2 },
+      allowIntersection: false,
+    });
+  }
+  drawControl.enable();
+  map.once(L.Draw.Event.CREATED, (e) => {
+    const layer = e.layer;
+    const gj = layer.toGeoJSON();
+    const area = calcAreaHa(gj);
+    openFieldEdit(null, { geojson: gj.geometry, areaHa: area });
+  });
+}
+
+function importGeoJSON(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      const features = data.type === 'FeatureCollection' ? data.features
+        : data.type === 'Feature' ? [data]
+        : data.type === 'Polygon' || data.type === 'MultiPolygon' ? [{ type: 'Feature', geometry: data, properties: {} }]
+        : null;
+      if (!features) {
+        // Maybe full backup
+        if (data.fields && data.groups && data.movements) {
+          if (confirm('Sieht aus wie ein Backup. Aktuelle Daten ersetzen?')) {
+            state.fields = data.fields;
+            state.groups = data.groups;
+            state.movements = data.movements;
+            state.settings = data.settings || state.settings;
+            saveState();
+            refresh();
+            toast('Backup wiederhergestellt');
+          }
+          return;
+        }
+        toast('Unbekanntes Format', 'danger');
+        return;
+      }
+      let added = 0;
+      features.forEach((feat, i) => {
+        if (!feat.geometry) return;
+        const name = feat.properties?.name || feat.properties?.NAME || feat.properties?.Name || `Feld ${state.fields.length + added + 1}`;
+        state.fields.push({
+          id: uid(),
+          name,
+          geojson: feat.geometry,
+          areaHa: calcAreaHa(feat),
+          notes: '',
+          createdAt: new Date().toISOString()
+        });
+        added++;
+      });
+      saveState();
+      refresh();
+      fitToFields();
+      toast(`${added} Felder importiert`);
+    } catch (e) {
+      console.error(e);
+      toast('Datei konnte nicht gelesen werden', 'danger');
+    }
+  };
+  reader.readAsText(file);
+}
+
+/* ============================================================
+   MODALS
+   ============================================================ */
+function openModal(title, bodyHtml, footHtml = '') {
+  const root = $('#modal-root');
+  root.innerHTML = `
+    <div class="modal">
+      <div class="modal-head">
+        <h2>${title}</h2>
+        <button class="icon-btn" id="modal-close" aria-label="Schließen">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">${bodyHtml}</div>
+      ${footHtml ? `<div class="modal-foot">${footHtml}</div>` : ''}
+    </div>`;
+  root.classList.add('open');
+  $('#modal-close').addEventListener('click', closeModal);
+  root.addEventListener('click', (e) => { if (e.target === root) closeModal(); });
+}
+function closeModal() {
+  $('#modal-root').classList.remove('open');
+  $('#modal-root').innerHTML = '';
+}
+
+/* ----- Field edit ----- */
+function openFieldEdit(fieldId, prefill = null) {
+  const f = fieldId ? state.fields.find(x => x.id === fieldId) : { name: '', notes: '', ...prefill };
+  const isNew = !fieldId;
+  openModal(isNew ? 'Neues Feld' : 'Feld bearbeiten', `
+    <div class="field">
+      <label>Name</label>
+      <input type="text" id="f-name" value="${escapeHtml(f.name)}" placeholder="z. B. Hofkoppel Nord" />
+    </div>
+    <div class="field">
+      <label>Fläche (ha)</label>
+      <input type="number" step="0.01" id="f-area" value="${(f.areaHa || 0).toFixed(2)}" />
+    </div>
+    <div class="field">
+      <label>Notiz</label>
+      <textarea id="f-notes" placeholder="Zaunzustand, Wasser, etc.">${escapeHtml(f.notes || '')}</textarea>
+    </div>
+  `, `
+    ${!isNew ? '<button class="btn danger" id="f-del">Löschen</button>' : ''}
+    <div style="flex:1"></div>
+    <button class="btn ghost" id="f-cancel">Abbrechen</button>
+    <button class="btn primary" id="f-save">Speichern</button>
+  `);
+  $('#f-cancel').addEventListener('click', closeModal);
+  $('#f-save').addEventListener('click', () => {
+    const name = $('#f-name').value.trim();
+    if (!name) { toast('Name erforderlich', 'warning'); return; }
+    if (isNew) {
+      state.fields.push({
+        id: uid(),
+        name,
+        geojson: f.geojson,
+        areaHa: parseFloat($('#f-area').value) || 0,
+        notes: $('#f-notes').value,
+        createdAt: new Date().toISOString()
+      });
+    } else {
+      f.name = name;
+      f.areaHa = parseFloat($('#f-area').value) || 0;
+      f.notes = $('#f-notes').value;
+    }
+    saveState();
+    refresh();
+    closeModal();
+    toast(isNew ? 'Feld angelegt' : 'Feld aktualisiert');
+  });
+  $('#f-del')?.addEventListener('click', () => {
+    if (!confirm('Feld wirklich löschen? Bewegungen auf diesem Feld werden auch entfernt.')) return;
+    state.movements = state.movements.filter(m => m.fieldId !== fieldId);
+    state.fields = state.fields.filter(x => x.id !== fieldId);
+    saveState();
+    refresh();
+    closeModal();
+    toast('Feld gelöscht');
+  });
+}
+
+/* ----- Group edit ----- */
+function openGroupEdit(groupId) {
+  const g = groupId ? state.groups.find(x => x.id === groupId) : {
+    name: '', count: 0, category: CATEGORIES[0],
+    color: GROUP_COLORS[state.groups.length % GROUP_COLORS.length],
+    notes: ''
+  };
+  const isNew = !groupId;
+  openModal(isNew ? 'Neue Gruppe' : 'Gruppe bearbeiten', `
+    <div class="field">
+      <label>Name</label>
+      <input type="text" id="g-name" value="${escapeHtml(g.name)}" placeholder="z. B. Jungrinder 2024" />
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Anzahl Tiere</label>
+        <input type="number" id="g-count" value="${g.count}" min="0" />
+      </div>
+      <div class="field">
+        <label>Kategorie</label>
+        <select id="g-cat">
+          ${CATEGORIES.map(c => `<option ${c === g.category ? 'selected' : ''}>${c}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>Farbe</label>
+      <div class="color-row" id="color-row">
+        ${GROUP_COLORS.map(c => `<div class="color-dot ${c === g.color ? 'selected' : ''}" data-c="${c}" style="background:${c}"></div>`).join('')}
+      </div>
+    </div>
+    <div class="field">
+      <label>Notiz</label>
+      <textarea id="g-notes">${escapeHtml(g.notes || '')}</textarea>
+    </div>
+  `, `
+    ${!isNew ? '<button class="btn danger" id="g-del">Löschen</button>' : ''}
+    <div style="flex:1"></div>
+    <button class="btn ghost" id="g-cancel">Abbrechen</button>
+    <button class="btn primary" id="g-save">Speichern</button>
+  `);
+  let selectedColor = g.color;
+  $$('#color-row .color-dot').forEach(el => el.addEventListener('click', () => {
+    $$('#color-row .color-dot').forEach(d => d.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedColor = el.dataset.c;
+  }));
+  $('#g-cancel').addEventListener('click', closeModal);
+  $('#g-save').addEventListener('click', () => {
+    const name = $('#g-name').value.trim();
+    if (!name) { toast('Name erforderlich', 'warning'); return; }
+    const data = {
+      name,
+      count: parseInt($('#g-count').value) || 0,
+      category: $('#g-cat').value,
+      color: selectedColor,
+      notes: $('#g-notes').value
+    };
+    if (isNew) state.groups.push({ id: uid(), ...data });
+    else Object.assign(g, data);
+    saveState();
+    refresh();
+    closeModal();
+    toast(isNew ? 'Gruppe angelegt' : 'Gruppe aktualisiert');
+  });
+  $('#g-del')?.addEventListener('click', () => {
+    if (!confirm('Gruppe wirklich löschen? Alle Umtriebe dieser Gruppe werden entfernt.')) return;
+    state.movements = state.movements.filter(m => m.groupId !== groupId);
+    state.groups = state.groups.filter(x => x.id !== groupId);
+    saveState();
+    refresh();
+    closeModal();
+    toast('Gruppe gelöscht');
+  });
+}
+
+/* ----- Movement creation ----- */
+async function openMoveModal() {
+  if (!state.groups.length) {
+    toast('Erst Gruppen anlegen', 'warning');
+    switchView('manage');
+    return;
+  }
+  if (!state.fields.length) {
+    toast('Erst Felder anlegen', 'warning');
+    switchView('manage');
+    return;
+  }
+  openModal('Umtrieb erfassen', `
+    <div class="field">
+      <label>Tiergruppe</label>
+      <select id="m-group">
+        ${state.groups.map(g => {
+          const cur = getCurrentMovement(g.id);
+          const curField = cur ? state.fields.find(f => f.id === cur.fieldId)?.name : '';
+          return `<option value="${g.id}">${escapeHtml(g.name)} (${g.count})${curField ? ' — aktuell: ' + escapeHtml(curField) : ''}</option>`;
+        }).join('')}
+      </select>
+    </div>
+    <div class="field">
+      <label>Neues Feld</label>
+      <select id="m-field">
+        ${state.fields.map(f => `<option value="${f.id}">${escapeHtml(f.name)} (${f.areaHa.toFixed(1)} ha)</option>`).join('')}
+      </select>
+      <button class="btn ghost" id="m-gps" style="margin-top:6px; font-size:12px">📍 Feld per GPS erkennen</button>
+    </div>
+    <div class="field">
+      <label>Datum</label>
+      <input type="date" id="m-date" value="${today()}" />
+    </div>
+    <div class="field">
+      <label>Notiz</label>
+      <textarea id="m-note" placeholder="Aufwuchs, Beobachtungen…"></textarea>
+    </div>
+    <div class="field">
+      <label>Fotos</label>
+      <button class="btn" id="m-add-photo" style="font-size:13px">📷 Foto hinzufügen</button>
+      <div class="photo-grid" id="m-photos"></div>
+    </div>
+  `, `
+    <button class="btn ghost" id="m-cancel">Abbrechen</button>
+    <button class="btn primary" id="m-save">Umtrieb speichern</button>
+  `);
+
+  const stagedPhotos = []; // {id, url}
+
+  $('#m-gps').addEventListener('click', () => {
+    if (!navigator.geolocation) { toast('GPS nicht verfügbar', 'danger'); return; }
+    toast('Standort wird ermittelt…');
+    navigator.geolocation.getCurrentPosition(pos => {
+      const f = findFieldContainingPoint(pos.coords.latitude, pos.coords.longitude);
+      if (f) {
+        $('#m-field').value = f.id;
+        toast(`Erkannt: ${f.name}`, 'success');
+      } else {
+        toast('Standort liegt in keinem Feld', 'warning');
+      }
+    }, err => {
+      console.error(err);
+      toast('Standort konnte nicht ermittelt werden', 'danger');
+    }, { enableHighAccuracy: true, timeout: 10000 });
+  });
+
+  $('#m-add-photo').addEventListener('click', () => {
+    const inp = $('#file-photo');
+    inp.value = '';
+    inp.onchange = async (e) => {
+      for (const file of e.target.files) {
+        const id = uid();
+        await savePhoto(id, file);
+        const url = URL.createObjectURL(file);
+        stagedPhotos.push({ id, url });
+        renderPhotoGrid();
+      }
+    };
+    inp.click();
+  });
+
+  function renderPhotoGrid() {
+    $('#m-photos').innerHTML = stagedPhotos.map(p => `
+      <div class="photo-thumb">
+        <img src="${p.url}" alt="" />
+        <button class="rm" data-rm="${p.id}">×</button>
+      </div>
+    `).join('');
+    $$('.rm[data-rm]').forEach(b => b.addEventListener('click', async () => {
+      const id = b.dataset.rm;
+      await deletePhoto(id);
+      const idx = stagedPhotos.findIndex(p => p.id === id);
+      if (idx >= 0) {
+        URL.revokeObjectURL(stagedPhotos[idx].url);
+        stagedPhotos.splice(idx, 1);
+      }
+      renderPhotoGrid();
+    }));
+  }
+
+  $('#m-cancel').addEventListener('click', async () => {
+    // Cleanup staged photos that were never saved
+    for (const p of stagedPhotos) {
+      await deletePhoto(p.id);
+      URL.revokeObjectURL(p.url);
+    }
+    closeModal();
+  });
+
+  $('#m-save').addEventListener('click', () => {
+    const groupId = $('#m-group').value;
+    const fieldId = $('#m-field').value;
+    const date = $('#m-date').value;
+    if (!date) { toast('Datum erforderlich', 'warning'); return; }
+
+    // Close current movement of this group, if any
+    const current = getCurrentMovement(groupId);
+    if (current) {
+      if (current.fieldId === fieldId) {
+        toast('Gruppe ist bereits auf diesem Feld', 'warning');
+        return;
+      }
+      current.toDate = date;
+    }
+
+    state.movements.push({
+      id: uid(),
+      groupId,
+      fieldId,
+      fromDate: date,
+      toDate: null,
+      note: $('#m-note').value,
+      photoIds: stagedPhotos.map(p => p.id)
+    });
+    saveState();
+    refresh();
+    closeModal();
+    toast('Umtrieb erfasst', 'success');
+  });
+}
+
+/* ----- Field detail ----- */
+function openFieldDetail(fieldId) {
+  const f = state.fields.find(x => x.id === fieldId);
+  if (!f) return;
+  const groups = getFieldCurrentGroups(fieldId);
+  const rest = getFieldRestDays(fieldId);
+  const occDays = getFieldOccupiedDaysThisYear(fieldId);
+  const history = state.movements
+    .filter(m => m.fieldId === fieldId)
+    .sort((a, b) => new Date(b.fromDate) - new Date(a.fromDate));
+
+  openModal(escapeHtml(f.name), `
+    <div class="detail-head">
+      <div class="swatch-big" style="background:${groups[0]?.color || 'var(--border)'}"></div>
+      <div>
+        <h2>${escapeHtml(f.name)}</h2>
+        <div class="sub">${f.areaHa.toFixed(2)} ha${f.notes ? ' · ' + escapeHtml(f.notes) : ''}</div>
+      </div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat">
+        <div class="stat-label">Aktuell</div>
+        <div class="stat-value small">${groups.length ? groups.map(g => escapeHtml(g.name)).join(', ') : 'leer'}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Weideruhe</div>
+        <div class="stat-value">${rest === null ? '–' : rest + 'd'}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Belegt ${new Date().getFullYear()}</div>
+        <div class="stat-value">${occDays}d</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Tiere aktuell</div>
+        <div class="stat-value">${groups.reduce((s, g) => s + g.count, 0)}</div>
+      </div>
+    </div>
+    <h2 class="section-title">Historie</h2>
+    ${history.length === 0 ? '<p style="color:var(--muted);font-size:13px">Noch keine Umtriebe.</p>' :
+      history.map(m => {
+        const g = state.groups.find(gr => gr.id === m.groupId);
+        const days = m.toDate ? daysBetween(m.fromDate, m.toDate) : daysBetween(m.fromDate, today());
+        return `<div class="hist-row">
+          <div class="hist-main">
+            <div class="hist-name">${escapeHtml(g?.name || '?')}</div>
+            <div class="hist-dates">${fmtDate(m.fromDate)} – ${m.toDate ? fmtDate(m.toDate) : 'aktuell'} · ${days}d</div>
+          </div>
+          ${!m.toDate ? '<span class="badge accent">aktuell</span>' : ''}
+        </div>`;
+      }).join('')
+    }
+  `, `
+    <button class="btn danger" id="fd-del">Feld löschen</button>
+    <div style="flex:1"></div>
+    <button class="btn" id="fd-edit">Bearbeiten</button>
+    <button class="btn primary" id="fd-show">Auf Karte zeigen</button>
+  `);
+  $('#fd-edit').addEventListener('click', () => { closeModal(); openFieldEdit(fieldId); });
+  $('#fd-show').addEventListener('click', () => {
+    closeModal();
+    switchView('map');
+    try {
+      const layer = L.geoJSON(f.geojson);
+      map.fitBounds(layer.getBounds(), { padding: [40, 40] });
+    } catch {}
+  });
+  $('#fd-del').addEventListener('click', () => {
+    if (!confirm('Feld wirklich löschen?')) return;
+    state.movements = state.movements.filter(m => m.fieldId !== fieldId);
+    state.fields = state.fields.filter(x => x.id !== fieldId);
+    saveState();
+    refresh();
+    closeModal();
+    toast('Feld gelöscht');
+  });
+}
+
+/* ----- Group detail ----- */
+function openGroupDetail(groupId) {
+  const g = state.groups.find(x => x.id === groupId);
+  if (!g) return;
+  const cur = getCurrentMovement(groupId);
+  const curField = cur ? state.fields.find(f => f.id === cur.fieldId) : null;
+  const sinceDays = cur ? daysBetween(cur.fromDate, today()) : null;
+  const allMv = state.movements.filter(m => m.groupId === groupId);
+  const totalDays = allMv.reduce((s, m) => s + daysBetween(m.fromDate, m.toDate || today()), 0);
+
+  openModal(escapeHtml(g.name), `
+    <div class="detail-head">
+      <div class="swatch-big" style="background:${g.color}"></div>
+      <div>
+        <h2>${escapeHtml(g.name)}</h2>
+        <div class="sub">${escapeHtml(g.category || '')} · ${g.count} Tiere</div>
+      </div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat">
+        <div class="stat-label">Aktuell auf</div>
+        <div class="stat-value small">${curField ? escapeHtml(curField.name) : '–'}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Seit</div>
+        <div class="stat-value">${sinceDays !== null ? sinceDays + 'd' : '–'}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Umtriebe</div>
+        <div class="stat-value">${allMv.length}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Erfasste Tage</div>
+        <div class="stat-value">${totalDays}d</div>
+      </div>
+    </div>
+    ${g.notes ? `<p style="color:var(--muted);font-size:13px;margin:0 0 12px">${escapeHtml(g.notes)}</p>` : ''}
+    <h2 class="section-title">Historie</h2>
+    ${allMv.length === 0 ? '<p style="color:var(--muted);font-size:13px">Noch keine Umtriebe.</p>' :
+      allMv.sort((a, b) => new Date(b.fromDate) - new Date(a.fromDate)).map(m => {
+        const f = state.fields.find(fl => fl.id === m.fieldId);
+        const days = m.toDate ? daysBetween(m.fromDate, m.toDate) : daysBetween(m.fromDate, today());
+        return `<div class="hist-row">
+          <div class="hist-main">
+            <div class="hist-name">${escapeHtml(f?.name || '?')}</div>
+            <div class="hist-dates">${fmtDate(m.fromDate)} – ${m.toDate ? fmtDate(m.toDate) : 'aktuell'} · ${days}d</div>
+          </div>
+          ${!m.toDate ? '<span class="badge accent">aktuell</span>' : ''}
+        </div>`;
+      }).join('')
+    }
+  `, `
+    <button class="btn danger" id="gd-del">Gruppe löschen</button>
+    <div style="flex:1"></div>
+    <button class="btn" id="gd-edit">Bearbeiten</button>
+    <button class="btn primary" id="gd-move">Umtreiben</button>
+  `);
+  $('#gd-edit').addEventListener('click', () => { closeModal(); openGroupEdit(groupId); });
+  $('#gd-move').addEventListener('click', () => {
+    closeModal();
+    openMoveModal();
+    setTimeout(() => { const sel = $('#m-group'); if (sel) sel.value = groupId; }, 50);
+  });
+  $('#gd-del').addEventListener('click', () => {
+    if (!confirm('Gruppe wirklich löschen?')) return;
+    state.movements = state.movements.filter(m => m.groupId !== groupId);
+    state.groups = state.groups.filter(x => x.id !== groupId);
+    saveState();
+    refresh();
+    closeModal();
+    toast('Gruppe gelöscht');
+  });
+}
+
+/* ----- Settings ----- */
+function openSettings() {
+  openModal('Einstellungen', `
+    <div class="field">
+      <label>Warnung bei langer Belegung (Tage)</label>
+      <input type="number" id="s-reminder" value="${state.settings.reminderDays}" min="1" max="365" />
+    </div>
+    <h2 class="section-title">Daten</h2>
+    <div class="btn-row" style="flex-direction:column;gap:8px">
+      <button class="btn full" id="s-export">📥 Backup exportieren (JSON)</button>
+      <button class="btn full" id="s-import">📤 Backup importieren</button>
+      <button class="btn full danger" id="s-reset">Alle Daten löschen</button>
+    </div>
+    <div class="alert" style="margin-top:16px">
+      <strong>Lokal gespeichert</strong>
+      Daten liegen ausschließlich im Browser. Regelmäßige Backups empfohlen.
+      Auf iOS ist die direkte Datei-Synchronisation nicht möglich — bitte JSON-Export nutzen.
+    </div>
+  `, `
+    <button class="btn ghost" id="s-cancel">Schließen</button>
+    <button class="btn primary" id="s-save">Speichern</button>
+  `);
+  $('#s-cancel').addEventListener('click', closeModal);
+  $('#s-save').addEventListener('click', () => {
+    state.settings.reminderDays = parseInt($('#s-reminder').value) || 14;
+    saveState();
+    refresh();
+    closeModal();
+    toast('Einstellungen gespeichert');
+  });
+  $('#s-export').addEventListener('click', exportBackup);
+  $('#s-import').addEventListener('click', () => $('#file-import').click());
+  $('#s-reset').addEventListener('click', () => {
+    if (!confirm('WIRKLICH alle Daten löschen? Das kann nicht rückgängig gemacht werden.')) return;
+    if (!confirm('Letzte Warnung — alle Felder, Gruppen, Umtriebe und Fotos werden gelöscht.')) return;
+    state = { fields: [], groups: [], movements: [], settings: { reminderDays: 14 } };
+    saveState();
+    indexedDB.deleteDatabase(DB_NAME);
+    dbPromise = null;
+    refresh();
+    closeModal();
+    toast('Alles zurückgesetzt');
+  });
+}
+
+function exportBackup() {
+  const data = {
+    _meta: { app: 'koppel-tracker', version: 1, exported: new Date().toISOString() },
+    fields: state.fields,
+    groups: state.groups,
+    movements: state.movements,
+    settings: state.settings
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `koppel-tracker-backup-${today()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast('Backup heruntergeladen', 'success');
+}
+
+/* ============================================================
+   ROUTING / REFRESH
+   ============================================================ */
+function switchView(target) {
+  $$('.view-pane').forEach(p => p.classList.toggle('active', p.dataset.view === target));
+  $$('.bottom-nav button').forEach(b => b.classList.toggle('active', b.dataset.target === target));
+  if (target === 'map') setTimeout(() => map?.invalidateSize(), 50);
+  if (target === 'list') renderList();
+  if (target === 'timeline') renderTimeline();
+  if (target === 'history') renderHistory();
+  if (target === 'manage') renderManage();
+}
+
+function refresh() {
+  renderFieldsOnMap();
+  const active = $('.view-pane.active')?.dataset.view;
+  if (active) switchView(active);
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+function init() {
+  loadState();
+  initMap();
+
+  $$('.bottom-nav button').forEach(b =>
+    b.addEventListener('click', () => switchView(b.dataset.target))
+  );
+  $('#fab-move').addEventListener('click', openMoveModal);
+  $('#btn-fit').addEventListener('click', fitToFields);
+  $('#btn-settings').addEventListener('click', openSettings);
+  $('#btn-locate').addEventListener('click', () => {
+    if (!navigator.geolocation) { toast('GPS nicht verfügbar', 'danger'); return; }
+    navigator.geolocation.getCurrentPosition(pos => {
+      const { latitude, longitude } = pos.coords;
+      if (locationMarker) map.removeLayer(locationMarker);
+      locationMarker = L.circleMarker([latitude, longitude], {
+        radius: 8, color: '#3d8a4d', fillColor: '#3d8a4d', fillOpacity: 0.6, weight: 2
+      }).addTo(map);
+      map.setView([latitude, longitude], 16);
+    }, () => toast('Standort nicht ermittelt', 'danger'), { enableHighAccuracy: true });
+  });
+  $('#file-import').addEventListener('change', (e) => {
+    if (e.target.files[0]) importGeoJSON(e.target.files[0]);
+    e.target.value = '';
+  });
+
+  fitToFields();
+
+  // First-run helper
+  if (!state.fields.length && !state.groups.length) {
+    setTimeout(() => {
+      toast('Willkommen! Lege unter „Verwalten" deine Felder und Gruppen an.');
+    }, 800);
+  }
+}
+
+window.addEventListener('DOMContentLoaded', init);
+
+/* ============================================================
+   SERVICE WORKER REGISTRATION (PWA)
+   ============================================================ */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js')
+      .then(reg => {
+        // Bei neuer Version: User benachrichtigen
+        reg.addEventListener('updatefound', () => {
+          const nw = reg.installing;
+          if (!nw) return;
+          nw.addEventListener('statechange', () => {
+            if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+              toast('Update verfügbar — App neu öffnen');
+            }
+          });
+        });
+      })
+      .catch(err => console.warn('SW registration failed', err));
+  });
+}
+</script>
+</body>
+</html>

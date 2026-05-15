@@ -4,14 +4,14 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="theme-color" content="#f5f6ef" />
-<title>Koppel-Tracker</title>
+<title>Weidemanager</title>
 <link rel="manifest" href="manifest.json" />
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-<meta name="apple-mobile-web-app-title" content="Koppel" />
+<meta name="apple-mobile-web-app-title" content="Weidemanager" />
 <meta name="mobile-web-app-capable" content="yes" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -578,7 +578,7 @@
 <body>
 <div class="app">
   <header class="topbar">
-    <h1>Koppel-Tracker</h1>
+    <h1>Weidemanager</h1>
     <div class="right">
       <button class="icon-btn" id="btn-locate" title="Mein Standort">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
@@ -653,7 +653,7 @@
 
 <script>
 /* =========================================================
-   Koppel-Tracker
+   Weidemanager
    Standalone HTML, localStorage + IndexedDB (Fotos)
    ========================================================= */
 
@@ -1740,7 +1740,7 @@ function openSettings() {
 
 function exportBackup() {
   const data = {
-    _meta: { app: 'koppel-tracker', version: 1, exported: new Date().toISOString() },
+    _meta: { app: 'weidemanager', version: 1, exported: new Date().toISOString() },
     fields: state.fields,
     groups: state.groups,
     movements: state.movements,
@@ -1750,7 +1750,7 @@ function exportBackup() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `koppel-tracker-backup-${today()}.json`;
+  a.download = `weidemanager-backup-${today()}.json`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

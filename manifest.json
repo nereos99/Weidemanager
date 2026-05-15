@@ -1,6 +1,6 @@
 {
-  "name": "Koppel-Tracker",
-  "short_name": "Koppel",
+  "name": "Weidemanager",
+  "short_name": "Weide",
   "description": "Weide- und Umtriebs-Management für Tiergruppen auf mehreren Feldern",
   "start_url": "./",
   "scope": "./",

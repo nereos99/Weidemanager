@@ -1,4 +1,4 @@
-/* Koppel-Tracker Service Worker
+/* Weidemanager Service Worker
    Strategie:
    - App-Shell (HTML, Manifest, Icons): cache-first
    - CDN-Libraries (Leaflet, Turf, Fonts): cache-first (versionierte URLs)
@@ -6,10 +6,12 @@
    Cache-Version hochzählen bei Code-Änderungen erzwingt Update.
 */
 
-const VERSION = 'v1.2.0';
-const SHELL_CACHE = `koppel-shell-${VERSION}`;
-const LIBS_CACHE  = `koppel-libs-${VERSION}`;
-const TILES_CACHE = `koppel-tiles-v1`;
+const VERSION = 'v1.3.0';
+const SHELL_CACHE = `weidemanager-shell-${VERSION}`;
+const LIBS_CACHE  = `weidemanager-libs-${VERSION}`;
+const TILES_CACHE = `weidemanager-tiles-v1`;
+const ACTIVE_CACHES = new Set([SHELL_CACHE, LIBS_CACHE, TILES_CACHE]);
+const CACHE_PREFIXES = ['weidemanager-', 'koppel-']; // 'koppel-' für Cleanup älterer Versionen
 
 const SHELL_FILES = [
   './',
@@ -42,7 +44,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then(keys =>
       Promise.all(
         keys
-          .filter(k => k.startsWith('koppel-') && k !== SHELL_CACHE && k !== LIBS_CACHE && k !== TILES_CACHE)
+          .filter(k => CACHE_PREFIXES.some(p => k.startsWith(p)) && !ACTIVE_CACHES.has(k))
           .map(k => caches.delete(k))
       )
     ).then(() => self.clients.claim())

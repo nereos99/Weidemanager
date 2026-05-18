@@ -567,6 +567,161 @@
     color: var(--text) !important;
     border-color: var(--border) !important;
   }
+  /* Hide default leaflet.draw toolbar — wir nutzen eigene UI */
+  .leaflet-draw.leaflet-control { display: none !important; }
+  /* Vertex-Marker beim Zeichnen: größer und kontrastreich */
+  .draw-vertex-icon {
+    background: var(--accent);
+    border: 3px solid #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  }
+  .draw-vertex-icon-touch {
+    background: var(--accent);
+    border: 3px solid #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  }
+
+  /* Drawing banner overlay */
+  #draw-banner {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    z-index: 600;
+    padding: 12px 14px;
+  }
+  .draw-banner-head {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+    margin-bottom: 10px;
+  }
+  .draw-title {
+    font-weight: 600; font-size: 14px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .draw-title::before {
+    content: ""; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent); animation: pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.3); }
+  }
+  .draw-hint { color: var(--muted); font-size: 12px; margin-top: 2px; line-height: 1.4; }
+  .draw-counter {
+    font-size: 12px;
+    background: var(--surface-2);
+    padding: 4px 10px;
+    border-radius: 999px;
+    color: var(--muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .draw-banner-actions {
+    display: flex; gap: 6px; justify-content: flex-end;
+  }
+  .draw-banner-actions .btn { padding: 7px 10px; font-size: 13px; }
+
+  /* Layer switcher on map */
+  .layer-switcher {
+    position: absolute;
+    bottom: 90px;
+    right: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    z-index: 500;
+    display: flex;
+    flex-direction: column;
+  }
+  .layer-btn {
+    background: var(--surface);
+    border: 0;
+    color: var(--muted);
+    padding: 8px 12px;
+    font-size: 11px;
+    font-weight: 500;
+    text-align: left;
+    border-bottom: 1px solid var(--border-soft);
+    cursor: pointer;
+    min-width: 86px;
+  }
+  .layer-btn:last-child { border-bottom: 0; }
+  .layer-btn:hover { background: var(--surface-2); color: var(--text); }
+  .layer-btn.active {
+    background: var(--accent);
+    color: #ffffff;
+  }
+
+  /* Animal list inside group edit */
+  .animal-list {
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-sm);
+    max-height: 240px;
+    overflow-y: auto;
+    background: var(--surface);
+  }
+  .animal-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border-soft);
+    font-size: 13px;
+  }
+  .animal-row:last-child { border-bottom: 0; }
+  .animal-row .tag { font-family: 'DM Mono', monospace; font-weight: 500; flex: 1; }
+  .animal-row .stall { color: var(--muted); font-size: 11px; font-family: 'DM Mono', monospace; }
+  .animal-row .rm-btn {
+    background: transparent; border: 0; color: var(--muted-soft);
+    width: 24px; height: 24px; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+  .animal-row .rm-btn:hover { background: var(--surface-2); color: var(--danger); }
+  .animal-empty {
+    padding: 16px 10px; text-align: center;
+    color: var(--muted); font-size: 12px;
+  }
+
+  /* Search modal & results */
+  .search-input-wrap {
+    position: sticky; top: 0;
+    background: var(--surface);
+    padding-bottom: 10px;
+    z-index: 2;
+  }
+  .search-input-wrap input {
+    width: 100%;
+    background: var(--surface-2);
+    border: 2px solid var(--accent);
+    color: var(--text);
+    padding: 12px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 16px;
+    font-family: 'DM Mono', monospace;
+  }
+  .search-input-wrap input:focus { outline: 0; border-color: var(--accent-dim); }
+  .search-result {
+    padding: 12px;
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+    background: var(--surface);
+    cursor: pointer;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .search-result:hover { border-color: var(--accent); }
+  .search-result .res-swatch { width: 4px; align-self: stretch; border-radius: 2px; }
+  .search-result .res-body { flex: 1; min-width: 0; }
+  .search-result .res-tag { font-family: 'DM Mono', monospace; font-weight: 600; font-size: 14px; }
+  .search-result .res-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .search-result .res-arrow { color: var(--muted); }
 
   /* Scrollbars */
   ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -580,6 +735,9 @@
   <header class="topbar">
     <h1>Weidemanager</h1>
     <div class="right">
+      <button class="icon-btn" id="btn-search" title="Tier suchen">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      </button>
       <button class="icon-btn" id="btn-locate" title="Mein Standort">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
       </button>
@@ -593,7 +751,13 @@
     <section class="view-pane map-pane active" data-view="map">
       <div id="map"></div>
       <div class="map-overlay">
-        <button class="map-overlay-btn" id="btn-fit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V3h4M21 7V3h-4M3 17v4h4M21 17v4h-4"/></svg> Felder zeigen</button>
+        <button class="map-overlay-btn" id="btn-fit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V3h4M21 7V3h-4M3 17v4h4M21 17v4h-4"/></svg> Alle Felder</button>
+        <button class="map-overlay-btn" id="btn-draw-from-map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg> Feld zeichnen</button>
+      </div>
+      <div class="layer-switcher">
+        <button class="layer-btn active" data-layer="map">🗺 Karte</button>
+        <button class="layer-btn" data-layer="satellite">🛰 Satellit</button>
+        <button class="layer-btn" data-layer="hybrid">🌍 Hybrid</button>
       </div>
       <button class="fab" id="fab-move" title="Umtrieb erfassen">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
@@ -675,7 +839,7 @@ const CATEGORIES = [
 /* ----- State ----- */
 let state = {
   fields: [],      // {id, name, geojson, areaHa, notes, createdAt}
-  groups: [],      // {id, name, category, count, color, notes}
+  groups: [],      // {id, name, category, count, color, notes, animals: [{id, tag, stallNo, birthDate, notes}]}
   movements: [],   // {id, groupId, fieldId, fromDate, toDate|null, note, photoIds: []}
   settings: { reminderDays: 14 }
 };
@@ -688,6 +852,8 @@ function loadState() {
       const parsed = JSON.parse(raw);
       state = { ...state, ...parsed };
       state.settings = { ...{ reminderDays: 14 }, ...(parsed.settings || {}) };
+      // Migration: alte Gruppen ohne animals-Array auffüllen
+      state.groups.forEach(g => { if (!Array.isArray(g.animals)) g.animals = []; });
     }
   } catch (e) { console.error('loadState', e); }
 }
@@ -798,6 +964,42 @@ function findFieldContainingPoint(lat, lng) {
   }
   return null;
 }
+
+/* Normalize ear tag: only keep digits, lowercase if it had letters */
+function normalizeTag(s) {
+  return String(s || '').replace(/\s+/g, '').toUpperCase();
+}
+/* Normalize for search: remove all non-alphanumeric */
+function searchableTag(s) {
+  return String(s || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+}
+
+/* Find an animal across all groups. Returns {animal, group} or null. */
+function findAnimal(query) {
+  const q = searchableTag(query);
+  if (!q) return null;
+  for (const g of state.groups) {
+    for (const a of (g.animals || [])) {
+      if (searchableTag(a.tag).includes(q) || searchableTag(a.stallNo).includes(q)) {
+        return { animal: a, group: g };
+      }
+    }
+  }
+  return null;
+}
+function findAllAnimals(query) {
+  const q = searchableTag(query);
+  if (!q) return [];
+  const results = [];
+  for (const g of state.groups) {
+    for (const a of (g.animals || [])) {
+      if (searchableTag(a.tag).includes(q) || searchableTag(a.stallNo).includes(q)) {
+        results.push({ animal: a, group: g });
+      }
+    }
+  }
+  return results.slice(0, 30);
+}
 function calcAreaHa(geojson) {
   try {
     return turf.area(geojson) / 10000;
@@ -822,6 +1024,8 @@ let fieldsLayer = null;
 let drawnItems = null;
 let drawControl = null;
 let locationMarker = null;
+let currentBaseLayer = 'map'; // 'map' | 'satellite' | 'hybrid'
+const baseLayers = {};
 
 function initMap() {
   map = L.map('map', {
@@ -831,17 +1035,58 @@ function initMap() {
   });
   L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-  // CARTO Positron — helles, neutrales Theme
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  // Karten-Layer: CARTO Positron (hell, neutral)
+  baseLayers.map = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
     attribution: '&copy; OpenStreetMap &copy; CARTO',
     subdomains: 'abcd',
     maxZoom: 19,
-  }).addTo(map);
+  });
+  // Satelliten-Layer: Esri World Imagery
+  baseLayers.satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+    maxZoom: 19,
+  });
+  // Hybrid = Satellit + Beschriftungs-Overlay
+  baseLayers.hybridLabels = L.tileLayer('https://stamen-tiles-{s}.a.ssl.fastly.net/toner-labels/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; Stamen Design',
+    subdomains: 'abcd',
+    maxZoom: 18,
+    opacity: 0.7,
+  });
+
+  setBaseLayer('map');
 
   fieldsLayer = L.featureGroup().addTo(map);
   drawnItems = L.featureGroup().addTo(map);
 
   renderFieldsOnMap();
+}
+
+function setBaseLayer(name) {
+  if (!map) return;
+  // Remove all base layers if they exist and are on the map
+  ['map', 'satellite'].forEach(k => {
+    if (baseLayers[k] && map.hasLayer(baseLayers[k])) map.removeLayer(baseLayers[k]);
+  });
+  if (baseLayers.hybridLabels && map.hasLayer(baseLayers.hybridLabels)) map.removeLayer(baseLayers.hybridLabels);
+
+  if (name === 'satellite' && baseLayers.satellite) {
+    baseLayers.satellite.addTo(map);
+  } else if (name === 'hybrid' && baseLayers.satellite) {
+    baseLayers.satellite.addTo(map);
+    if (baseLayers.hybridLabels) baseLayers.hybridLabels.addTo(map);
+  } else if (baseLayers.map) {
+    baseLayers.map.addTo(map);
+  }
+  currentBaseLayer = name;
+  if (fieldsLayer) fieldsLayer.bringToFront();
+  updateLayerToggleUI();
+}
+
+function updateLayerToggleUI() {
+  $$('.layer-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.layer === currentBaseLayer);
+  });
 }
 
 function fieldColor(field) {
@@ -854,12 +1099,18 @@ function fieldColor(field) {
 function renderFieldsOnMap() {
   if (!fieldsLayer) return;
   fieldsLayer.clearLayers();
+  const onSat = currentBaseLayer !== 'map';
   state.fields.forEach(f => {
     if (!f.geojson) return;
     const { color, fill, fillOpacity } = fieldColor(f);
     const groups = getFieldCurrentGroups(f.id);
     const layer = L.geoJSON(f.geojson, {
-      style: { color, weight: 2, fillColor: fill, fillOpacity }
+      style: {
+        color,
+        weight: onSat ? 3 : 2,
+        fillColor: fill,
+        fillOpacity: onSat ? Math.min(fillOpacity + 0.1, 0.5) : fillOpacity,
+      }
     });
     // Label
     try {
@@ -1131,15 +1382,21 @@ function renderManage() {
     : '<div class="empty"><p>Noch keine Felder.</p></div>';
 
   $('#groups-list').innerHTML = state.groups.length
-    ? state.groups.map(g => `
+    ? state.groups.map(g => {
+        const animals = g.animals?.length || 0;
+        return `
         <div class="card clickable" data-group-edit="${g.id}">
           <div class="swatch" style="background:${g.color}"></div>
           <div class="card-body">
             <div class="card-title">${escapeHtml(g.name)} <span class="badge">${g.count}</span></div>
-            <div class="card-sub"><span>${escapeHtml(g.category || '')}</span></div>
+            <div class="card-sub">
+              <span>${escapeHtml(g.category || '')}</span>
+              ${animals > 0 ? `<span class="mono">${animals} Ohrmarken</span>` : ''}
+            </div>
           </div>
         </div>
-      `).join('')
+      `;
+      }).join('')
     : '<div class="empty"><p>Noch keine Gruppen.</p></div>';
 
   $('#btn-add-field-draw').addEventListener('click', startDrawField);
@@ -1172,22 +1429,121 @@ function buildReminderBanner() {
 /* ============================================================
    FIELD DRAWING & IMPORT
    ============================================================ */
+let drawingActive = false;
+
 function startDrawField() {
   switchView('map');
-  toast('Feld auf der Karte zeichnen — Polygon schließen mit Doppelklick');
+  // Wechsel automatisch auf Satellit für besseren Kontext, falls auf Karte
+  if (currentBaseLayer === 'map') {
+    setBaseLayer('hybrid');
+  }
+  // Wenn noch keine Felder vorhanden, zoome zur GPS-Position
+  if (!state.fields.length && navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      map.setView([pos.coords.latitude, pos.coords.longitude], 17);
+    }, () => {}, { enableHighAccuracy: true, timeout: 4000 });
+  }
+
+  enterDrawMode();
+}
+
+function enterDrawMode() {
+  if (drawingActive) return;
+  drawingActive = true;
+
   if (!drawControl) {
     drawControl = new L.Draw.Polygon(map, {
-      shapeOptions: { color: '#3d8a4d', weight: 2, fillOpacity: 0.2 },
+      shapeOptions: { color: '#3d8a4d', weight: 3, fillOpacity: 0.25, fillColor: '#3d8a4d' },
       allowIntersection: false,
+      showArea: false,
+      drawError: { color: '#b8493d', message: '<strong>Linien dürfen sich nicht kreuzen</strong>' },
+      icon: new L.DivIcon({
+        iconSize: new L.Point(12, 12),
+        className: 'draw-vertex-icon',
+      }),
+      touchIcon: new L.DivIcon({
+        iconSize: new L.Point(20, 20),
+        className: 'draw-vertex-icon-touch',
+      }),
     });
   }
   drawControl.enable();
+  showDrawBanner();
+
+  // Listener für Punkt-Hinzufügen → Update Banner
+  map.on('draw:drawvertex', updateDrawCounter);
+
   map.once(L.Draw.Event.CREATED, (e) => {
-    const layer = e.layer;
-    const gj = layer.toGeoJSON();
+    const gj = e.layer.toGeoJSON();
     const area = calcAreaHa(gj);
+    exitDrawMode();
     openFieldEdit(null, { geojson: gj.geometry, areaHa: area });
   });
+}
+
+function exitDrawMode() {
+  drawingActive = false;
+  if (drawControl) drawControl.disable();
+  map.off('draw:drawvertex', updateDrawCounter);
+  hideDrawBanner();
+}
+
+function showDrawBanner() {
+  const existing = document.getElementById('draw-banner');
+  if (existing) existing.remove();
+  const banner = document.createElement('div');
+  banner.id = 'draw-banner';
+  banner.innerHTML = `
+    <div class="draw-banner-head">
+      <div>
+        <div class="draw-title">Feld zeichnen</div>
+        <div class="draw-hint" id="draw-hint">Tippe nacheinander auf die Eckpunkte des Felds.</div>
+      </div>
+      <div class="draw-counter mono" id="draw-count">0 Punkte</div>
+    </div>
+    <div class="draw-banner-actions">
+      <button class="btn ghost" id="draw-undo">↶ Punkt zurück</button>
+      <button class="btn ghost" id="draw-cancel">Abbrechen</button>
+      <button class="btn primary" id="draw-finish">✓ Fertig</button>
+    </div>
+  `;
+  document.querySelector('.map-pane').appendChild(banner);
+
+  document.getElementById('draw-undo').addEventListener('click', () => {
+    if (drawControl) drawControl.deleteLastVertex();
+    updateDrawCounter();
+  });
+  document.getElementById('draw-cancel').addEventListener('click', () => {
+    exitDrawMode();
+  });
+  document.getElementById('draw-finish').addEventListener('click', () => {
+    if (drawControl) {
+      try {
+        drawControl.completeShape();
+      } catch (e) {
+        toast('Mindestens 3 Punkte nötig', 'warning');
+      }
+    }
+  });
+}
+
+function hideDrawBanner() {
+  const el = document.getElementById('draw-banner');
+  if (el) el.remove();
+}
+
+function updateDrawCounter() {
+  const el = document.getElementById('draw-count');
+  if (!el || !drawControl) return;
+  // Leaflet.draw hält die Punkte intern: _markers
+  const n = (drawControl._markers || []).length;
+  el.textContent = n + (n === 1 ? ' Punkt' : ' Punkte');
+  const hint = document.getElementById('draw-hint');
+  if (hint) {
+    if (n === 0) hint.textContent = 'Tippe nacheinander auf die Eckpunkte des Felds.';
+    else if (n < 3) hint.textContent = `Noch ${3 - n} Punkte bis zum Schließen möglich.`;
+    else hint.textContent = 'Tippe „Fertig" oder Doppeltipp auf letzten Punkt zum Schließen.';
+  }
 }
 
 function importGeoJSON(file) {
@@ -1329,8 +1685,9 @@ function openGroupEdit(groupId) {
   const g = groupId ? state.groups.find(x => x.id === groupId) : {
     name: '', count: 0, category: CATEGORIES[0],
     color: GROUP_COLORS[state.groups.length % GROUP_COLORS.length],
-    notes: ''
+    notes: '', animals: []
   };
+  if (!Array.isArray(g.animals)) g.animals = [];
   const isNew = !groupId;
   openModal(isNew ? 'Neue Gruppe' : 'Gruppe bearbeiten', `
     <div class="field">
@@ -1355,6 +1712,14 @@ function openGroupEdit(groupId) {
         ${GROUP_COLORS.map(c => `<div class="color-dot ${c === g.color ? 'selected' : ''}" data-c="${c}" style="background:${c}"></div>`).join('')}
       </div>
     </div>
+    ${!isNew ? `
+    <div class="field">
+      <label>Tiere mit Ohrmarken (${g.animals.length})</label>
+      <button class="btn full" id="g-animals" style="text-align:left">
+        ${g.animals.length === 0 ? '+ Tiere erfassen' : `${g.animals.length} Tier${g.animals.length === 1 ? '' : 'e'} verwalten →`}
+      </button>
+      ${g.animals.length > 0 && g.animals.length !== g.count ? `<div style="color:var(--warning);font-size:11px;margin-top:4px">⚠ Anzahl (${g.count}) und erfasste Tiere (${g.animals.length}) stimmen nicht überein</div>` : ''}
+    </div>` : '<div class="alert">Nach dem Speichern kannst du einzelne Tiere mit Ohrmarken erfassen.</div>'}
     <div class="field">
       <label>Notiz</label>
       <textarea id="g-notes">${escapeHtml(g.notes || '')}</textarea>
@@ -1372,9 +1737,14 @@ function openGroupEdit(groupId) {
     selectedColor = el.dataset.c;
   }));
   $('#g-cancel').addEventListener('click', closeModal);
-  $('#g-save').addEventListener('click', () => {
+  $('#g-animals')?.addEventListener('click', () => {
+    // Erst speichern, dann Tier-Editor öffnen
+    saveGroupChanges();
+    openAnimalsEdit(groupId);
+  });
+  function saveGroupChanges() {
     const name = $('#g-name').value.trim();
-    if (!name) { toast('Name erforderlich', 'warning'); return; }
+    if (!name) { toast('Name erforderlich', 'warning'); return false; }
     const data = {
       name,
       count: parseInt($('#g-count').value) || 0,
@@ -1382,9 +1752,16 @@ function openGroupEdit(groupId) {
       color: selectedColor,
       notes: $('#g-notes').value
     };
-    if (isNew) state.groups.push({ id: uid(), ...data });
-    else Object.assign(g, data);
+    if (isNew) {
+      state.groups.push({ id: uid(), ...data, animals: [] });
+    } else {
+      Object.assign(g, data);
+    }
     saveState();
+    return true;
+  }
+  $('#g-save').addEventListener('click', () => {
+    if (!saveGroupChanges()) return;
     refresh();
     closeModal();
     toast(isNew ? 'Gruppe angelegt' : 'Gruppe aktualisiert');
@@ -1397,6 +1774,123 @@ function openGroupEdit(groupId) {
     refresh();
     closeModal();
     toast('Gruppe gelöscht');
+  });
+}
+
+/* ----- Tier-Verwaltung pro Gruppe ----- */
+function openAnimalsEdit(groupId) {
+  const g = state.groups.find(x => x.id === groupId);
+  if (!g) return;
+  if (!Array.isArray(g.animals)) g.animals = [];
+
+  function renderList() {
+    if (!g.animals.length) {
+      return '<div class="animal-empty">Noch keine Tiere erfasst.<br>Tippe Ohrmarken einzeln ein oder importiere unten eine Liste.</div>';
+    }
+    return g.animals
+      .slice()
+      .sort((a, b) => searchableTag(a.tag).localeCompare(searchableTag(b.tag)))
+      .map(a => `
+        <div class="animal-row" data-aid="${a.id}">
+          <span class="tag">${escapeHtml(a.tag)}</span>
+          ${a.stallNo ? `<span class="stall">Stall ${escapeHtml(a.stallNo)}</span>` : ''}
+          <button class="rm-btn" data-rm="${a.id}" title="Entfernen">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+      `).join('');
+  }
+
+  function refreshList() {
+    $('#animal-list').innerHTML = renderList();
+    $('#animal-count').textContent = g.animals.length;
+    $$('[data-rm]').forEach(b => b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const aid = b.dataset.rm;
+      g.animals = g.animals.filter(a => a.id !== aid);
+      saveState();
+      refreshList();
+    }));
+  }
+
+  openModal(`Tiere — ${escapeHtml(g.name)}`, `
+    <div class="alert">
+      <strong>Erfasste Tiere: <span id="animal-count">${g.animals.length}</span> / ${g.count}</strong>
+      Die Suche oben findet diese Tiere per Ohrmarke.
+    </div>
+    <div class="field">
+      <label>Einzeln hinzufügen</label>
+      <div style="display:flex;gap:6px">
+        <input type="text" id="single-tag" placeholder="Ohrmarke" inputmode="numeric" style="flex:2" />
+        <input type="text" id="single-stall" placeholder="Stall-Nr (optional)" style="flex:1" />
+        <button class="btn primary" id="single-add">+</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>Aktuelle Liste</label>
+      <div class="animal-list" id="animal-list">${renderList()}</div>
+    </div>
+    <div class="field">
+      <label>Massen-Import (eine Ohrmarke pro Zeile)</label>
+      <textarea id="bulk-tags" placeholder="DE 09 123 456 78&#10;DE 09 123 456 79&#10;…" style="min-height:90px;font-family:'DM Mono',monospace;font-size:13px"></textarea>
+      <button class="btn" id="bulk-add" style="margin-top:6px">Liste importieren</button>
+    </div>
+  `, `
+    <div style="flex:1"></div>
+    <button class="btn primary" id="animals-done">Fertig</button>
+  `);
+
+  $('#single-add').addEventListener('click', () => {
+    const tag = normalizeTag($('#single-tag').value);
+    const stallNo = $('#single-stall').value.trim();
+    if (!tag) { toast('Ohrmarke erforderlich', 'warning'); return; }
+    if (g.animals.some(a => searchableTag(a.tag) === searchableTag(tag))) {
+      toast('Ohrmarke schon vorhanden', 'warning');
+      return;
+    }
+    g.animals.push({ id: uid(), tag, stallNo, birthDate: '', notes: '' });
+    saveState();
+    $('#single-tag').value = '';
+    $('#single-stall').value = '';
+    $('#single-tag').focus();
+    refreshList();
+  });
+  $('#single-tag').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); $('#single-add').click(); }
+  });
+
+  $('#bulk-add').addEventListener('click', () => {
+    const text = $('#bulk-tags').value;
+    if (!text.trim()) return;
+    const lines = text.split(/[\n,;]/).map(s => s.trim()).filter(Boolean);
+    let added = 0, skipped = 0;
+    for (const line of lines) {
+      // Optional: "DE 09 12345678" oder "DE 09 12345678 | Stall 42" o.ä.
+      let tag = normalizeTag(line);
+      let stallNo = '';
+      // Wenn Pipe oder Tab drin: rechte Seite als Stall-Nr
+      const split = line.split(/[\t|]/);
+      if (split.length > 1) {
+        tag = normalizeTag(split[0]);
+        stallNo = split[1].trim();
+      }
+      if (!tag) continue;
+      if (g.animals.some(a => searchableTag(a.tag) === searchableTag(tag))) {
+        skipped++;
+        continue;
+      }
+      g.animals.push({ id: uid(), tag, stallNo, birthDate: '', notes: '' });
+      added++;
+    }
+    saveState();
+    $('#bulk-tags').value = '';
+    refreshList();
+    toast(`${added} hinzugefügt${skipped ? ', ' + skipped + ' Duplikate übersprungen' : ''}`, 'success');
+  });
+
+  $('#animals-done').addEventListener('click', () => {
+    closeModal();
+    refresh();
   });
 }
 
@@ -1634,7 +2128,7 @@ function openGroupDetail(groupId) {
       <div class="swatch-big" style="background:${g.color}"></div>
       <div>
         <h2>${escapeHtml(g.name)}</h2>
-        <div class="sub">${escapeHtml(g.category || '')} · ${g.count} Tiere</div>
+        <div class="sub">${escapeHtml(g.category || '')} · ${g.count} Tiere${(g.animals?.length || 0) > 0 ? ` · ${g.animals.length} Ohrmarken erfasst` : ''}</div>
       </div>
     </div>
     <div class="stats-grid">
@@ -1655,6 +2149,9 @@ function openGroupDetail(groupId) {
         <div class="stat-value">${totalDays}d</div>
       </div>
     </div>
+    <button class="btn full" id="gd-animals" style="margin-bottom:12px">
+      🐄 Tiere & Ohrmarken verwalten (${g.animals?.length || 0})
+    </button>
     ${g.notes ? `<p style="color:var(--muted);font-size:13px;margin:0 0 12px">${escapeHtml(g.notes)}</p>` : ''}
     <h2 class="section-title">Historie</h2>
     ${allMv.length === 0 ? '<p style="color:var(--muted);font-size:13px">Noch keine Umtriebe.</p>' :
@@ -1677,6 +2174,7 @@ function openGroupDetail(groupId) {
     <button class="btn primary" id="gd-move">Umtreiben</button>
   `);
   $('#gd-edit').addEventListener('click', () => { closeModal(); openGroupEdit(groupId); });
+  $('#gd-animals').addEventListener('click', () => { closeModal(); openAnimalsEdit(groupId); });
   $('#gd-move').addEventListener('click', () => {
     closeModal();
     openMoveModal();
@@ -1738,6 +2236,96 @@ function openSettings() {
   });
 }
 
+/* ----- Tier-Suche ----- */
+function openSearch() {
+  openModal('Tier suchen', `
+    <div class="search-input-wrap">
+      <input type="text" id="search-input" placeholder="Ohrmarke oder Stallnummer…" autocomplete="off" inputmode="numeric" />
+    </div>
+    <div id="search-results"></div>
+  `, '');
+  const input = $('#search-input');
+  const results = $('#search-results');
+
+  function renderResults(q) {
+    if (!q || q.length < 1) {
+      const total = state.groups.reduce((s, g) => s + (g.animals?.length || 0), 0);
+      results.innerHTML = `<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0">
+        ${total} Tiere insgesamt erfasst.<br>Tippe eine Ohrmarke ein.
+      </p>`;
+      return;
+    }
+    const found = findAllAnimals(q);
+    if (!found.length) {
+      results.innerHTML = `<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0">
+        Kein Tier gefunden für „${escapeHtml(q)}".
+      </p>`;
+      return;
+    }
+    results.innerHTML = found.map(({ animal, group }) => {
+      const mv = getCurrentMovement(group.id);
+      const field = mv ? state.fields.find(f => f.id === mv.fieldId) : null;
+      return `
+        <div class="search-result" data-group="${group.id}" data-field="${field?.id || ''}">
+          <div class="res-swatch" style="background:${group.color}"></div>
+          <div class="res-body">
+            <div class="res-tag">${highlightMatch(animal.tag, q)}${animal.stallNo ? ' <span style="color:var(--muted);font-weight:400">· Stall ' + highlightMatch(animal.stallNo, q) + '</span>' : ''}</div>
+            <div class="res-meta">${escapeHtml(group.name)} ${field ? '→ ' + escapeHtml(field.name) : '→ <em>kein Feld zugewiesen</em>'}</div>
+          </div>
+          <div class="res-arrow">→</div>
+        </div>
+      `;
+    }).join('');
+    $$('.search-result', results).forEach(el => el.addEventListener('click', () => {
+      const fieldId = el.dataset.field;
+      const groupId = el.dataset.group;
+      closeModal();
+      if (fieldId) {
+        const f = state.fields.find(fl => fl.id === fieldId);
+        if (f && f.geojson) {
+          switchView('map');
+          try {
+            const layer = L.geoJSON(f.geojson);
+            map.fitBounds(layer.getBounds(), { padding: [80, 80], maxZoom: 17 });
+          } catch {}
+          setTimeout(() => openFieldDetail(fieldId), 400);
+        }
+      } else {
+        openGroupDetail(groupId);
+      }
+    }));
+  }
+
+  function highlightMatch(text, query) {
+    const t = escapeHtml(text || '');
+    const q = searchableTag(query);
+    if (!q) return t;
+    // Highlight all matched chars (vereinfacht: case-insensitive substring match)
+    const tNorm = searchableTag(text);
+    const idx = tNorm.indexOf(q);
+    if (idx < 0) return t;
+    // Map back zu Original-Position
+    let originalIdx = 0, charsCounted = 0;
+    for (let i = 0; i < (text || '').length && charsCounted < idx; i++) {
+      if (/[A-Za-z0-9]/.test(text[i])) charsCounted++;
+      originalIdx = i + 1;
+    }
+    let endIdx = originalIdx, matched = 0;
+    for (let i = originalIdx; i < (text || '').length && matched < q.length; i++) {
+      if (/[A-Za-z0-9]/.test(text[i])) matched++;
+      endIdx = i + 1;
+    }
+    return escapeHtml(text.slice(0, originalIdx)) +
+           '<mark style="background:rgba(61,138,77,0.25);color:inherit;padding:0 2px;border-radius:2px">' +
+           escapeHtml(text.slice(originalIdx, endIdx)) + '</mark>' +
+           escapeHtml(text.slice(endIdx));
+  }
+
+  input.addEventListener('input', (e) => renderResults(e.target.value));
+  renderResults('');
+  setTimeout(() => input.focus(), 100);
+}
+
 function exportBackup() {
   const data = {
     _meta: { app: 'weidemanager', version: 1, exported: new Date().toISOString() },
@@ -1790,6 +2378,9 @@ function init() {
   $('#fab-move').addEventListener('click', openMoveModal);
   $('#btn-fit').addEventListener('click', fitToFields);
   $('#btn-settings').addEventListener('click', openSettings);
+  $('#btn-search').addEventListener('click', openSearch);
+  $('#btn-draw-from-map').addEventListener('click', startDrawField);
+  $$('.layer-btn').forEach(b => b.addEventListener('click', () => setBaseLayer(b.dataset.layer)));
   $('#btn-locate').addEventListener('click', () => {
     if (!navigator.geolocation) { toast('GPS nicht verfügbar', 'danger'); return; }
     navigator.geolocation.getCurrentPosition(pos => {
@@ -1804,6 +2395,15 @@ function init() {
   $('#file-import').addEventListener('change', (e) => {
     if (e.target.files[0]) importGeoJSON(e.target.files[0]);
     e.target.value = '';
+  });
+
+  // Keyboard shortcut: "/" oder "f" öffnet Suche
+  document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.key === '/' || e.key === 'f') {
+      e.preventDefault();
+      openSearch();
+    }
   });
 
   fitToFields();

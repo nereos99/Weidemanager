@@ -757,7 +757,8 @@
     color: var(--muted); font-size: 14px;
     margin-bottom: 24px;
   }
-  .login-box input[type="email"] {
+  .login-box input[type="email"],
+  .login-box input[type="password"] {
     width: 100%;
     background: var(--surface-2);
     border: 1px solid var(--border);
@@ -845,9 +846,11 @@
 <div id="login-overlay" class="hidden">
   <div class="login-box">
     <div class="login-logo">Weidemanager</div>
-    <div class="login-sub">Mit E-Mail anmelden — du bekommst einen Link zugeschickt.</div>
+    <div class="login-sub">Mit E-Mail und Passwort anmelden.</div>
     <input type="email" id="login-email" placeholder="deine@email.de" autocomplete="email" inputmode="email" />
-    <button class="btn primary" id="login-btn">Anmelde-Link senden</button>
+    <input type="password" id="login-password" placeholder="Passwort" autocomplete="current-password" />
+    <button class="btn primary" id="login-btn">Anmelden</button>
+    <button class="btn ghost" id="forgot-btn" style="margin-top:8px;width:100%">Passwort vergessen?</button>
     <div class="login-status" id="login-status"></div>
     <div class="login-foot">Daten werden in Supabase (EU) gespeichert.</div>
   </div>
@@ -989,12 +992,15 @@ function setSyncState(s, label) {
   el.title = ({ online: 'Verbunden mit Supabase', offline: 'Offline — Änderungen nicht möglich', syncing: 'Synchronisiere…' }[s] || s);
 }
 
-async function signInWithMagicLink(email) {
+async function signInWithPassword(email, password) {
+  return sb.auth.signInWithPassword({ email, password });
+}
+async function sendPasswordReset(email) {
   const redirectTo = location.origin + location.pathname;
-  return sb.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: redirectTo }
-  });
+  return sb.auth.resetPasswordForEmail(email, { redirectTo });
+}
+async function changePassword(newPassword) {
+  return sb.auth.updateUser({ password: newPassword });
 }
 async function signOut() {
   if (realtimeChannel) {
@@ -2689,6 +2695,42 @@ function openGroupDetail(groupId) {
   });
 }
 
+/* ----- Passwort ändern Modal ----- */
+function openChangePassword(isInitial) {
+  openModal(isInitial ? 'Neues Passwort setzen' : 'Passwort ändern', `
+    ${isInitial ? '<div class="alert"><strong>Reset-Link akzeptiert</strong>Bitte vergib jetzt ein neues Passwort für deinen Account.</div>' : ''}
+    <div class="field">
+      <label>Neues Passwort (min. 6 Zeichen)</label>
+      <input type="password" id="pw-new" autocomplete="new-password" />
+    </div>
+    <div class="field">
+      <label>Wiederholen</label>
+      <input type="password" id="pw-new2" autocomplete="new-password" />
+    </div>
+  `, `
+    ${!isInitial ? '<button class="btn ghost" id="pw-cancel">Abbrechen</button>' : ''}
+    <div style="flex:1"></div>
+    <button class="btn primary" id="pw-save">Speichern</button>
+  `);
+  $('#pw-cancel')?.addEventListener('click', closeModal);
+  $('#pw-save').addEventListener('click', async () => {
+    const pw1 = $('#pw-new').value;
+    const pw2 = $('#pw-new2').value;
+    if (pw1.length < 6) { toast('Mindestens 6 Zeichen', 'warning'); return; }
+    if (pw1 !== pw2) { toast('Passwörter stimmen nicht überein', 'warning'); return; }
+    try {
+      const { error } = await changePassword(pw1);
+      if (error) throw error;
+      toast('Passwort gespeichert', 'success');
+      closeModal();
+    } catch (e) {
+      console.error(e);
+      toast('Fehler: ' + (e.message || 'unbekannt'), 'danger');
+    }
+  });
+  setTimeout(() => $('#pw-new')?.focus(), 100);
+}
+
 /* ----- Settings ----- */
 function openSettings() {
   const hasLegacy = !!localStorage.getItem(LEGACY_STORAGE_KEY);
@@ -2710,7 +2752,10 @@ function openSettings() {
       <button class="btn full danger" id="s-reset">Alle Cloud-Daten löschen</button>
     </div>
     <h2 class="section-title">Konto</h2>
-    <button class="btn full" id="s-logout">Abmelden</button>
+    <div class="btn-row" style="flex-direction:column;gap:8px">
+      <button class="btn full" id="s-change-password">Passwort ändern</button>
+      <button class="btn full" id="s-logout">Abmelden</button>
+    </div>
     <div class="alert" style="margin-top:16px">
       <strong>Cloud-Sync aktiv</strong>
       Daten werden in Supabase (EU/Stockholm) gespeichert und mit allen angemeldeten Geräten synchronisiert.
@@ -2732,6 +2777,10 @@ function openSettings() {
   $('#s-logout').addEventListener('click', async () => {
     if (!confirm('Wirklich abmelden?')) return;
     await signOut();
+  });
+  $('#s-change-password').addEventListener('click', () => {
+    closeModal();
+    openChangePassword(false);
   });
   $('#s-migrate')?.addEventListener('click', async () => {
     closeModal();
@@ -2918,21 +2967,50 @@ async function init() {
   // Login-Form binden
   document.getElementById('login-btn').addEventListener('click', async () => {
     const email = document.getElementById('login-email').value.trim();
-    if (!email) { showLoginOverlay(true, 'Bitte E-Mail eingeben', 'error'); return; }
+    const password = document.getElementById('login-password').value;
+    if (!email || !password) {
+      showLoginOverlay(true, 'E-Mail und Passwort erforderlich', 'error');
+      return;
+    }
+    showLoginOverlay(true, 'Anmelden…', '');
+    const { error } = await signInWithPassword(email, password);
+    if (error) {
+      showLoginOverlay(true, error.message === 'Invalid login credentials' ? 'E-Mail oder Passwort falsch' : error.message, 'error');
+    }
+    // Bei Erfolg übernimmt onAuthStateChange
+  });
+  document.getElementById('forgot-btn').addEventListener('click', async () => {
+    const email = document.getElementById('login-email').value.trim();
+    if (!email) {
+      showLoginOverlay(true, 'Erst E-Mail eingeben, dann „Passwort vergessen"', 'error');
+      return;
+    }
+    if (!confirm(`Reset-Link an ${email} senden?`)) return;
     showLoginOverlay(true, 'Sende Link…', '');
-    const { error } = await signInWithMagicLink(email);
+    const { error } = await sendPasswordReset(email);
     if (error) {
       showLoginOverlay(true, error.message, 'error');
     } else {
-      showLoginOverlay(true, `Link an ${email} geschickt — Mail-App öffnen und auf den Link tippen.`, 'success');
+      showLoginOverlay(true, `Reset-Link an ${email} geschickt. Nach Klick im Link kannst du in den Einstellungen ein neues Passwort setzen.`, 'success');
     }
   });
   document.getElementById('login-email').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') document.getElementById('login-btn').click();
+    if (e.key === 'Enter') { e.preventDefault(); document.getElementById('login-password').focus(); }
+  });
+  document.getElementById('login-password').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); document.getElementById('login-btn').click(); }
   });
 
   // Auth-Status-Listener
   sb.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'PASSWORD_RECOVERY') {
+      // User hat Reset-Link geklickt → direkt zum Passwort-Setzen
+      showLoading(false);
+      showLoginOverlay(false);
+      currentUser = session?.user || null;
+      setTimeout(() => openChangePassword(true), 500);
+      return;
+    }
     if (session && session.user) {
       currentUser = session.user;
       showLoginOverlay(false);
@@ -2944,7 +3022,6 @@ async function init() {
         fitToFields();
       } catch (e) {
         console.error(e);
-        // Offline-Fallback: lokale Daten zeigen, wenn vorhanden
         loadLocalBackup();
         setSyncState('offline');
         showLoading(false);

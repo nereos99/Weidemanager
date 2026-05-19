@@ -6,7 +6,7 @@
    Cache-Version hochzählen bei Code-Änderungen erzwingt Update.
 */
 
-const VERSION = 'v2.0.0';
+const VERSION = 'v2.1.0';
 const SHELL_CACHE = `weidemanager-shell-${VERSION}`;
 const LIBS_CACHE  = `weidemanager-libs-${VERSION}`;
 const TILES_CACHE = `weidemanager-tiles-v1`;

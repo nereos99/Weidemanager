@@ -2957,10 +2957,39 @@ function showLoading(show, text = 'Verbinde…') {
   el.classList.toggle('hidden', !show);
 }
 
+/* Timeout-Wrapper für Promise-Aufrufe — verhindert dass Calls ewig hängen */
+function withTimeout(promise, ms, errorMessage) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(errorMessage || 'Timeout')), ms);
+    promise.then(v => { clearTimeout(timer); resolve(v); })
+           .catch(e => { clearTimeout(timer); reject(e); });
+  });
+}
+
+/* "Neu laden"-Button im Loading-Screen einblenden, falls hängt */
+function showLoadingRetry(show) {
+  let retryBtn = document.getElementById('loading-retry');
+  if (show) {
+    if (!retryBtn) {
+      retryBtn = document.createElement('button');
+      retryBtn.id = 'loading-retry';
+      retryBtn.className = 'btn primary';
+      retryBtn.textContent = 'Neu laden';
+      retryBtn.style.marginTop = '12px';
+      retryBtn.addEventListener('click', () => {
+        // Hartes Reload — umgeht Service-Worker-Cache
+        location.reload();
+      });
+      document.getElementById('app-loading').appendChild(retryBtn);
+    }
+  } else if (retryBtn) {
+    retryBtn.remove();
+  }
+}
+
 async function init() {
   showLoading(true, 'Verbinde mit Server…');
   loadLocalSettings();
-  // Map kann sofort initialisiert werden (gehört nicht zu den DB-Daten)
   initMap();
   setupListeners();
 
@@ -2973,11 +3002,19 @@ async function init() {
       return;
     }
     showLoginOverlay(true, 'Anmelden…', '');
-    const { error } = await signInWithPassword(email, password);
-    if (error) {
-      showLoginOverlay(true, error.message === 'Invalid login credentials' ? 'E-Mail oder Passwort falsch' : error.message, 'error');
+    try {
+      const { data, error } = await signInWithPassword(email, password);
+      if (error) {
+        showLoginOverlay(true, error.message === 'Invalid login credentials' ? 'E-Mail oder Passwort falsch' : error.message, 'error');
+        return;
+      }
+      if (data?.user) {
+        await loadAppData(data.user);
+      }
+    } catch (e) {
+      console.error('Login failed:', e);
+      showLoginOverlay(true, 'Anmeldung fehlgeschlagen: ' + (e.message || 'Unbekannt'), 'error');
     }
-    // Bei Erfolg übernimmt onAuthStateChange
   });
   document.getElementById('forgot-btn').addEventListener('click', async () => {
     const email = document.getElementById('login-email').value.trim();
@@ -3001,48 +3038,83 @@ async function init() {
     if (e.key === 'Enter') { e.preventDefault(); document.getElementById('login-btn').click(); }
   });
 
-  // Auth-Status-Listener
-  sb.auth.onAuthStateChange(async (event, session) => {
+  // Auth-Status-Listener (nur für später nach Init-Phase)
+  sb.auth.onAuthStateChange((event, session) => {
     if (event === 'PASSWORD_RECOVERY') {
-      // User hat Reset-Link geklickt → direkt zum Passwort-Setzen
+      currentUser = session?.user || null;
       showLoading(false);
       showLoginOverlay(false);
-      currentUser = session?.user || null;
-      setTimeout(() => openChangePassword(true), 500);
-      return;
-    }
-    if (session && session.user) {
-      currentUser = session.user;
-      showLoginOverlay(false);
-      showLoading(true, 'Lade Daten…');
-      try {
-        await dbLoadAll();
-        setupRealtime();
-        showLoading(false);
-        fitToFields();
-      } catch (e) {
-        console.error(e);
-        loadLocalBackup();
-        setSyncState('offline');
-        showLoading(false);
-        toast('Offline — zeige zuletzt geladene Daten', 'warning');
-      }
-      refresh();
+      setTimeout(() => openChangePassword(true), 300);
     } else if (event === 'SIGNED_OUT') {
       currentUser = null;
+      if (realtimeChannel) { sb.removeChannel(realtimeChannel); realtimeChannel = null; }
       setSyncState('offline', 'Abgemeldet');
       showLoading(false);
       showLoginOverlay(true);
+    } else if (event === 'TOKEN_REFRESHED') {
+      currentUser = session?.user || currentUser;
     }
+    // SIGNED_IN wird durch loadAppData() handled (siehe Login-Button + Init)
   });
 
-  // Initial check: schon eingeloggt?
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session) {
-    showLoading(false);
-    showLoginOverlay(true);
+  // Initial: Session prüfen mit Timeout-Schutz
+  const initRetryTimer = setTimeout(() => showLoadingRetry(true), 10000);
+  try {
+    const sessionPromise = sb.auth.getSession();
+    const timeoutPromise = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000));
+    const result = await Promise.race([sessionPromise, timeoutPromise]);
+    const session = result?.data?.session;
+    clearTimeout(initRetryTimer);
+    showLoadingRetry(false);
+
+    if (session?.user) {
+      await loadAppData(session.user);
+    } else {
+      showLoading(false);
+      showLoginOverlay(true);
+    }
+  } catch (e) {
+    console.error('Init failed:', e);
+    clearTimeout(initRetryTimer);
+    showLoadingRetry(false);
+    // Fallback: lokales Backup zeigen, wenn vorhanden
+    loadLocalBackup();
+    if (state.fields.length || state.groups.length) {
+      setSyncState('offline');
+      showLoading(false);
+      refresh();
+      toast('Server nicht erreichbar — zeige lokale Daten', 'warning');
+    } else {
+      showLoading(false);
+      showLoginOverlay(true, 'Server nicht erreichbar. Versuche es erneut.', 'error');
+    }
   }
-  // Andernfalls übernimmt der onAuthStateChange-Handler oben
+}
+
+async function loadAppData(user) {
+  currentUser = user;
+  showLoginOverlay(false);
+  showLoading(true, 'Lade Daten…');
+  // Failsafe: nach 10s "Neu laden"-Button zeigen
+  const retryTimer = setTimeout(() => showLoadingRetry(true), 10000);
+  try {
+    await withTimeout(dbLoadAll(), 15000, 'Datenladen dauert zu lange');
+    setupRealtime();
+    clearTimeout(retryTimer);
+    showLoadingRetry(false);
+    showLoading(false);
+    fitToFields();
+    refresh();
+  } catch (e) {
+    console.error('loadAppData failed:', e);
+    clearTimeout(retryTimer);
+    showLoadingRetry(false);
+    loadLocalBackup();
+    setSyncState('offline');
+    showLoading(false);
+    refresh();
+    toast('Verbindung dauerte zu lange — zeige zuletzt geladene Daten', 'warning');
+  }
 }
 
 function setupListeners() {
@@ -3082,6 +3154,18 @@ function setupListeners() {
   // Online/Offline-Status überwachen
   window.addEventListener('online', () => { if (currentUser) setupRealtime(); });
   window.addEventListener('offline', () => setSyncState('offline'));
+
+  // App-Resume (iOS PWA aus Background): Realtime neu verbinden
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && currentUser) {
+      // WebSocket könnte tot sein — neu setup
+      setupRealtime();
+      // Daten könnten veraltet sein — frisch laden (mit Timeout)
+      withTimeout(dbLoadAll(), 10000, 'Reload-Timeout')
+        .then(() => refresh())
+        .catch(e => console.warn('Background-resume reload failed:', e));
+    }
+  });
 }
 
 window.addEventListener('DOMContentLoaded', init);

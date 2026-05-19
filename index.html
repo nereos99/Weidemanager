@@ -18,6 +18,8 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+<script src="config.js"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <style>
   :root {
     --bg: #f5f6ef;
@@ -70,11 +72,7 @@
   }
   .topbar h1 {
     margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -0.01em;
-    display: flex; align-items: center; gap: 8px;
-  }
-  .topbar h1::before {
-    content: ""; width: 8px; height: 8px; border-radius: 50%;
-    background: var(--accent); box-shadow: 0 0 8px rgba(61, 138, 77, 0.5);
+    display: flex; align-items: center;
   }
   .topbar .right { display: flex; gap: 6px; }
   .icon-btn {
@@ -728,12 +726,136 @@
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
   ::-webkit-scrollbar-thumb:hover { background: var(--border); }
+
+  /* ===== Login Screen ===== */
+  #login-overlay {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    z-index: 5000;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  #login-overlay.hidden { display: none; }
+  .login-box {
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: 16px;
+    padding: 32px 24px;
+    max-width: 380px; width: 100%;
+    box-shadow: var(--shadow);
+  }
+  .login-logo {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 700; font-size: 20px;
+    margin-bottom: 4px;
+  }
+  .login-logo::before {
+    content: ""; width: 12px; height: 12px; border-radius: 50%;
+    background: var(--accent);
+  }
+  .login-sub {
+    color: var(--muted); font-size: 14px;
+    margin-bottom: 24px;
+  }
+  .login-box input[type="email"] {
+    width: 100%;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 12px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 15px;
+    margin-bottom: 10px;
+  }
+  .login-box input:focus { outline: 0; border-color: var(--accent); }
+  .login-box .btn { width: 100%; padding: 12px; font-size: 15px; }
+  .login-status {
+    margin-top: 14px;
+    padding: 10px 12px;
+    background: var(--surface-2);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    color: var(--muted);
+    text-align: center;
+    display: none;
+  }
+  .login-status.show { display: block; }
+  .login-status.success {
+    background: rgba(74, 154, 94, 0.12);
+    color: var(--success);
+    border: 1px solid rgba(74, 154, 94, 0.3);
+  }
+  .login-status.error {
+    background: rgba(184, 73, 61, 0.1);
+    color: var(--danger);
+    border: 1px solid rgba(184, 73, 61, 0.3);
+  }
+  .login-foot {
+    margin-top: 18px;
+    font-size: 11px; color: var(--muted-soft);
+    text-align: center;
+  }
+
+  /* Sync-Indicator im Header */
+  .sync-indicator {
+    display: inline-flex; align-items: center; gap: 4px;
+    margin-left: 8px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px; font-weight: 500;
+    background: var(--surface-2);
+    color: var(--muted);
+  }
+  .sync-indicator.online { color: var(--success); }
+  .sync-indicator.offline { color: var(--warning); }
+  .sync-indicator.syncing { color: var(--accent); }
+  .sync-indicator::before {
+    content: ""; width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor;
+  }
+  .sync-indicator.syncing::before { animation: pulse 1.4s ease-in-out infinite; }
+
+  /* Loading-Screen */
+  #app-loading {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    z-index: 4000;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 16px;
+  }
+  #app-loading.hidden { display: none; }
+  .spinner {
+    width: 36px; height: 36px;
+    border: 3px solid var(--surface-2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { color: var(--muted); font-size: 14px; }
 </style>
 </head>
 <body>
+<div id="app-loading">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loading-text">Verbinde…</div>
+</div>
+
+<div id="login-overlay" class="hidden">
+  <div class="login-box">
+    <div class="login-logo">Weidemanager</div>
+    <div class="login-sub">Mit E-Mail anmelden — du bekommst einen Link zugeschickt.</div>
+    <input type="email" id="login-email" placeholder="deine@email.de" autocomplete="email" inputmode="email" />
+    <button class="btn primary" id="login-btn">Anmelde-Link senden</button>
+    <div class="login-status" id="login-status"></div>
+    <div class="login-foot">Daten werden in Supabase (EU) gespeichert.</div>
+  </div>
+</div>
+
 <div class="app">
   <header class="topbar">
-    <h1>Weidemanager</h1>
+    <h1>Weidemanager<span class="sync-indicator" id="sync-indicator" title="Verbindungsstatus">…</span></h1>
     <div class="right">
       <button class="icon-btn" id="btn-search" title="Tier suchen">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
@@ -821,9 +943,12 @@
    Standalone HTML, localStorage + IndexedDB (Fotos)
    ========================================================= */
 
-const STORAGE_KEY = 'koppel_tracker_v1';
-const DB_NAME = 'koppel_tracker_photos';
-const DB_STORE = 'photos';
+/* Local backup key (nur für Settings und Offline-Cache) */
+const LOCAL_BACKUP_KEY = 'weidemanager_backup_v1';
+const LOCAL_SETTINGS_KEY = 'weidemanager_settings_v1';
+/* Legacy keys (für Migration alter Daten) */
+const LEGACY_STORAGE_KEY = 'koppel_tracker_v1';
+const LEGACY_DB_NAME = 'koppel_tracker_photos';
 
 const GROUP_COLORS = [
   '#3d8a4d', '#d97706', '#7c3aed', '#0891b2',
@@ -838,75 +963,388 @@ const CATEGORIES = [
 
 /* ----- State ----- */
 let state = {
-  fields: [],      // {id, name, geojson, areaHa, notes, createdAt}
-  groups: [],      // {id, name, category, count, color, notes, animals: [{id, tag, stallNo, birthDate, notes}]}
-  movements: [],   // {id, groupId, fieldId, fromDate, toDate|null, note, photoIds: []}
+  fields: [],
+  groups: [],
+  movements: [],
   settings: { reminderDays: 14 }
 };
 
-/* ----- Persistence ----- */
-function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      state = { ...state, ...parsed };
-      state.settings = { ...{ reminderDays: 14 }, ...(parsed.settings || {}) };
-      // Migration: alte Gruppen ohne animals-Array auffüllen
-      state.groups.forEach(g => { if (!Array.isArray(g.animals)) g.animals = []; });
-    }
-  } catch (e) { console.error('loadState', e); }
-}
-function saveState() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch (e) {
-    toast('Fehler beim Speichern (Speicher voll?)', 'danger');
-    console.error(e);
-  }
+/* ============================================================
+   SUPABASE CLIENT & AUTH
+   ============================================================ */
+const cfg = window.WEIDEMANAGER_CONFIG;
+const sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+});
+let currentUser = null;
+let realtimeChannel = null;
+let syncState = 'syncing'; // 'online' | 'offline' | 'syncing'
+
+function setSyncState(s, label) {
+  syncState = s;
+  const el = document.getElementById('sync-indicator');
+  if (!el) return;
+  el.className = 'sync-indicator ' + s;
+  el.textContent = label || ({ online: 'Live', offline: 'Offline', syncing: '…' }[s] || s);
+  el.title = ({ online: 'Verbunden mit Supabase', offline: 'Offline — Änderungen nicht möglich', syncing: 'Synchronisiere…' }[s] || s);
 }
 
-/* ----- IndexedDB for photos ----- */
-let dbPromise = null;
-function db() {
-  if (dbPromise) return dbPromise;
-  dbPromise = new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1);
-    req.onupgradeneeded = () => req.result.createObjectStore(DB_STORE);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-  return dbPromise;
-}
-async function savePhoto(id, blob) {
-  const d = await db();
-  return new Promise((res, rej) => {
-    const tx = d.transaction(DB_STORE, 'readwrite');
-    tx.objectStore(DB_STORE).put(blob, id);
-    tx.oncomplete = () => res();
-    tx.onerror = () => rej(tx.error);
+async function signInWithMagicLink(email) {
+  const redirectTo = location.origin + location.pathname;
+  return sb.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: redirectTo }
   });
 }
-async function getPhoto(id) {
-  const d = await db();
-  return new Promise((res, rej) => {
-    const tx = d.transaction(DB_STORE, 'readonly');
-    const req = tx.objectStore(DB_STORE).get(id);
-    req.onsuccess = () => res(req.result);
-    req.onerror = () => rej(req.error);
-  });
+async function signOut() {
+  if (realtimeChannel) {
+    await sb.removeChannel(realtimeChannel);
+    realtimeChannel = null;
+  }
+  await sb.auth.signOut();
+  currentUser = null;
+  state = { fields: [], groups: [], movements: [], settings: state.settings };
+  location.reload();
 }
-async function deletePhoto(id) {
-  const d = await db();
-  return new Promise((res) => {
-    const tx = d.transaction(DB_STORE, 'readwrite');
-    tx.objectStore(DB_STORE).delete(id);
-    tx.oncomplete = () => res();
+
+/* ============================================================
+   DB LAYER — Mapping zwischen DB (snake_case) und JS (camelCase)
+   ============================================================ */
+function fieldFromDb(row) {
+  return { id: row.id, name: row.name, geojson: row.geojson, areaHa: parseFloat(row.area_ha) || 0, notes: row.notes || '', createdAt: row.created_at };
+}
+function fieldToDb(f) {
+  return { id: f.id, name: f.name, geojson: f.geojson, area_ha: f.areaHa || 0, notes: f.notes || '' };
+}
+function groupFromDb(row) {
+  return { id: row.id, name: row.name, category: row.category || 'Sonstige', count: row.count || 0, color: row.color || '#3d8a4d', notes: row.notes || '', animals: [] };
+}
+function groupToDb(g) {
+  return { id: g.id, name: g.name, category: g.category || 'Sonstige', count: g.count || 0, color: g.color || '#3d8a4d', notes: g.notes || '' };
+}
+function animalFromDb(row) {
+  return { id: row.id, groupId: row.group_id, tag: row.tag, stallNo: row.stall_no || '', birthDate: row.birth_date || '', notes: row.notes || '' };
+}
+function animalToDb(a, groupId) {
+  return { id: a.id, group_id: groupId || a.groupId, tag: a.tag, stall_no: a.stallNo || '', birth_date: a.birthDate || null, notes: a.notes || '' };
+}
+function movementFromDb(row) {
+  return { id: row.id, groupId: row.group_id, fieldId: row.field_id, fromDate: row.from_date, toDate: row.to_date, note: row.note || '', photoPaths: row.photo_paths || [] };
+}
+function movementToDb(m) {
+  return { id: m.id, group_id: m.groupId, field_id: m.fieldId, from_date: m.fromDate, to_date: m.toDate || null, note: m.note || '', photo_paths: m.photoPaths || [] };
+}
+
+/* High-level: Lade ALLES aus Supabase und befülle state */
+async function dbLoadAll() {
+  const [fres, gres, ares, mres] = await Promise.all([
+    sb.from('fields').select('*').order('created_at', { ascending: true }),
+    sb.from('groups').select('*').order('created_at', { ascending: true }),
+    sb.from('animals').select('*').order('created_at', { ascending: true }),
+    sb.from('movements').select('*').order('from_date', { ascending: true }),
+  ]);
+  if (fres.error) throw fres.error;
+  if (gres.error) throw gres.error;
+  if (ares.error) throw ares.error;
+  if (mres.error) throw mres.error;
+  state.fields = fres.data.map(fieldFromDb);
+  state.groups = gres.data.map(groupFromDb);
+  const animalsByGroup = {};
+  for (const row of ares.data) {
+    const a = animalFromDb(row);
+    (animalsByGroup[a.groupId] = animalsByGroup[a.groupId] || []).push(a);
+  }
+  state.groups.forEach(g => { g.animals = animalsByGroup[g.id] || []; });
+  state.movements = mres.data.map(movementFromDb);
+  saveLocalBackup();
+}
+
+/* CRUD pro Entität — UI ruft diese auf */
+async function dbCreateField(field) {
+  const row = fieldToDb(field);
+  const { data, error } = await sb.from('fields').insert(row).select().single();
+  if (error) throw error;
+  const f = fieldFromDb(data);
+  if (!state.fields.find(x => x.id === f.id)) state.fields.push(f);
+  saveLocalBackup();
+  return f;
+}
+async function dbUpdateField(id, patch) {
+  const row = fieldToDb({ ...patch, id });
+  delete row.id;
+  const { data, error } = await sb.from('fields').update(row).eq('id', id).select().single();
+  if (error) throw error;
+  const f = fieldFromDb(data);
+  const idx = state.fields.findIndex(x => x.id === id);
+  if (idx >= 0) state.fields[idx] = f;
+  saveLocalBackup();
+  return f;
+}
+async function dbDeleteField(id) {
+  const { error } = await sb.from('fields').delete().eq('id', id);
+  if (error) throw error;
+  state.fields = state.fields.filter(x => x.id !== id);
+  state.movements = state.movements.filter(m => m.fieldId !== id);
+  saveLocalBackup();
+}
+
+async function dbCreateGroup(group) {
+  const row = groupToDb(group);
+  const { data, error } = await sb.from('groups').insert(row).select().single();
+  if (error) throw error;
+  const g = groupFromDb(data);
+  g.animals = [];
+  if (!state.groups.find(x => x.id === g.id)) state.groups.push(g);
+  saveLocalBackup();
+  return g;
+}
+async function dbUpdateGroup(id, patch) {
+  const row = groupToDb({ ...patch, id });
+  delete row.id;
+  const { data, error } = await sb.from('groups').update(row).eq('id', id).select().single();
+  if (error) throw error;
+  const idx = state.groups.findIndex(x => x.id === id);
+  if (idx >= 0) {
+    const animals = state.groups[idx].animals;
+    state.groups[idx] = groupFromDb(data);
+    state.groups[idx].animals = animals;
+  }
+  saveLocalBackup();
+}
+async function dbDeleteGroup(id) {
+  const { error } = await sb.from('groups').delete().eq('id', id);
+  if (error) throw error;
+  state.groups = state.groups.filter(x => x.id !== id);
+  state.movements = state.movements.filter(m => m.groupId !== id);
+  saveLocalBackup();
+}
+
+async function dbCreateAnimal(groupId, animal) {
+  const row = animalToDb(animal, groupId);
+  const { data, error } = await sb.from('animals').insert(row).select().single();
+  if (error) throw error;
+  const a = animalFromDb(data);
+  const g = state.groups.find(x => x.id === groupId);
+  if (g && !g.animals.find(x => x.id === a.id)) g.animals.push(a);
+  saveLocalBackup();
+  return a;
+}
+async function dbCreateAnimalsBulk(groupId, animals) {
+  const rows = animals.map(a => animalToDb(a, groupId));
+  const { data, error } = await sb.from('animals').insert(rows).select();
+  if (error) throw error;
+  const g = state.groups.find(x => x.id === groupId);
+  if (g) {
+    for (const row of data) {
+      const a = animalFromDb(row);
+      if (!g.animals.find(x => x.id === a.id)) g.animals.push(a);
+    }
+  }
+  saveLocalBackup();
+  return data.map(animalFromDb);
+}
+async function dbDeleteAnimal(animalId, groupId) {
+  const { error } = await sb.from('animals').delete().eq('id', animalId);
+  if (error) throw error;
+  const g = state.groups.find(x => x.id === groupId);
+  if (g) g.animals = g.animals.filter(a => a.id !== animalId);
+  saveLocalBackup();
+}
+
+async function dbCreateMovement(movement) {
+  const row = movementToDb(movement);
+  const { data, error } = await sb.from('movements').insert(row).select().single();
+  if (error) throw error;
+  const m = movementFromDb(data);
+  if (!state.movements.find(x => x.id === m.id)) state.movements.push(m);
+  saveLocalBackup();
+  return m;
+}
+async function dbUpdateMovement(id, patch) {
+  const row = movementToDb({ ...patch, id });
+  delete row.id;
+  const { data, error } = await sb.from('movements').update(row).eq('id', id).select().single();
+  if (error) throw error;
+  const idx = state.movements.findIndex(x => x.id === id);
+  if (idx >= 0) state.movements[idx] = movementFromDb(data);
+  saveLocalBackup();
+}
+async function dbCloseMovement(id, toDate) {
+  return dbUpdateMovement(id, { toDate });
+}
+
+/* ============================================================
+   PHOTOS — Supabase Storage
+   ============================================================ */
+async function savePhoto(blob) {
+  /* Returns path in bucket */
+  const ext = (blob.type && blob.type.split('/')[1]) || 'jpg';
+  const path = `${currentUser.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const { error } = await sb.storage.from(cfg.PHOTOS_BUCKET).upload(path, blob, {
+    cacheControl: '3600', upsert: false, contentType: blob.type
   });
+  if (error) throw error;
+  return path;
+}
+const photoUrlCache = new Map();
+async function getPhotoUrl(path) {
+  if (photoUrlCache.has(path)) return photoUrlCache.get(path);
+  const { data, error } = await sb.storage.from(cfg.PHOTOS_BUCKET).createSignedUrl(path, 3600);
+  if (error) throw error;
+  photoUrlCache.set(path, data.signedUrl);
+  // Cache invalidieren bevor URL abläuft
+  setTimeout(() => photoUrlCache.delete(path), 3500 * 1000);
+  return data.signedUrl;
+}
+async function deletePhoto(path) {
+  photoUrlCache.delete(path);
+  const { error } = await sb.storage.from(cfg.PHOTOS_BUCKET).remove([path]);
+  if (error) console.warn('deletePhoto', error);
+}
+
+/* ============================================================
+   LOCAL BACKUP (read-only cache wenn offline)
+   ============================================================ */
+function saveLocalBackup() {
+  try {
+    localStorage.setItem(LOCAL_BACKUP_KEY, JSON.stringify({
+      fields: state.fields, groups: state.groups, movements: state.movements, ts: Date.now()
+    }));
+  } catch (e) {}
+}
+function loadLocalBackup() {
+  try {
+    const raw = localStorage.getItem(LOCAL_BACKUP_KEY);
+    if (raw) {
+      const d = JSON.parse(raw);
+      state.fields = d.fields || [];
+      state.groups = d.groups || [];
+      state.movements = d.movements || [];
+      state.groups.forEach(g => { if (!Array.isArray(g.animals)) g.animals = []; });
+    }
+  } catch (e) {}
+}
+function loadLocalSettings() {
+  try {
+    const raw = localStorage.getItem(LOCAL_SETTINGS_KEY);
+    if (raw) state.settings = { ...state.settings, ...JSON.parse(raw) };
+  } catch (e) {}
+}
+function saveLocalSettings() {
+  try { localStorage.setItem(LOCAL_SETTINGS_KEY, JSON.stringify(state.settings)); } catch (e) {}
+}
+
+/* ============================================================
+   REALTIME — Subscribe to changes from other devices
+   ============================================================ */
+function setupRealtime() {
+  if (realtimeChannel) sb.removeChannel(realtimeChannel);
+  realtimeChannel = sb.channel('weidemanager-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'fields' }, ev => handleRealtime('fields', ev))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'groups' }, ev => handleRealtime('groups', ev))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'animals' }, ev => handleRealtime('animals', ev))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'movements' }, ev => handleRealtime('movements', ev))
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') setSyncState('online');
+      else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') setSyncState('offline');
+    });
+}
+function handleRealtime(table, ev) {
+  const { eventType, new: row, old: oldRow } = ev;
+  if (table === 'fields') {
+    if (eventType === 'INSERT' || eventType === 'UPDATE') {
+      const f = fieldFromDb(row);
+      const idx = state.fields.findIndex(x => x.id === f.id);
+      if (idx >= 0) state.fields[idx] = f; else state.fields.push(f);
+    } else if (eventType === 'DELETE') {
+      state.fields = state.fields.filter(x => x.id !== oldRow.id);
+    }
+  } else if (table === 'groups') {
+    if (eventType === 'INSERT' || eventType === 'UPDATE') {
+      const idx = state.groups.findIndex(x => x.id === row.id);
+      const animals = idx >= 0 ? state.groups[idx].animals : [];
+      const g = groupFromDb(row);
+      g.animals = animals;
+      if (idx >= 0) state.groups[idx] = g; else state.groups.push(g);
+    } else if (eventType === 'DELETE') {
+      state.groups = state.groups.filter(x => x.id !== oldRow.id);
+    }
+  } else if (table === 'animals') {
+    if (eventType === 'INSERT' || eventType === 'UPDATE') {
+      const a = animalFromDb(row);
+      const g = state.groups.find(x => x.id === a.groupId);
+      if (g) {
+        const idx = g.animals.findIndex(x => x.id === a.id);
+        if (idx >= 0) g.animals[idx] = a; else g.animals.push(a);
+      }
+    } else if (eventType === 'DELETE') {
+      for (const g of state.groups) {
+        g.animals = g.animals.filter(a => a.id !== oldRow.id);
+      }
+    }
+  } else if (table === 'movements') {
+    if (eventType === 'INSERT' || eventType === 'UPDATE') {
+      const m = movementFromDb(row);
+      const idx = state.movements.findIndex(x => x.id === m.id);
+      if (idx >= 0) state.movements[idx] = m; else state.movements.push(m);
+    } else if (eventType === 'DELETE') {
+      state.movements = state.movements.filter(x => x.id !== oldRow.id);
+    }
+  }
+  saveLocalBackup();
+  refresh();
+}
+
+/* ============================================================
+   LEGACY MIGRATION — alte localStorage-Daten nach Supabase
+   ============================================================ */
+async function migrateLegacyData() {
+  const raw = localStorage.getItem(LEGACY_STORAGE_KEY);
+  if (!raw) {
+    toast('Keine alten Daten gefunden');
+    return;
+  }
+  let legacy;
+  try { legacy = JSON.parse(raw); } catch { toast('Alte Daten beschädigt', 'danger'); return; }
+  if (!confirm(`${(legacy.fields || []).length} Felder, ${(legacy.groups || []).length} Gruppen, ${(legacy.movements || []).length} Umtriebe migrieren?\n\nFotos werden nicht übernommen (waren nur lokal).`)) return;
+
+  const oldToNewIds = new Map();
+  let errs = 0;
+
+  // Felder
+  for (const f of (legacy.fields || [])) {
+    try {
+      const newId = crypto.randomUUID();
+      oldToNewIds.set(f.id, newId);
+      await dbCreateField({ id: newId, name: f.name, geojson: f.geojson, areaHa: f.areaHa || 0, notes: f.notes || '' });
+    } catch (e) { console.error(e); errs++; }
+  }
+  // Gruppen
+  for (const g of (legacy.groups || [])) {
+    try {
+      const newId = crypto.randomUUID();
+      oldToNewIds.set(g.id, newId);
+      await dbCreateGroup({ id: newId, name: g.name, category: g.category, count: g.count, color: g.color, notes: g.notes });
+      // Tiere
+      const animals = (g.animals || []).map(a => ({ id: crypto.randomUUID(), tag: a.tag, stallNo: a.stallNo || '', birthDate: a.birthDate || '', notes: a.notes || '' }));
+      if (animals.length) await dbCreateAnimalsBulk(newId, animals);
+    } catch (e) { console.error(e); errs++; }
+  }
+  // Umtriebe
+  for (const m of (legacy.movements || [])) {
+    try {
+      const newGroupId = oldToNewIds.get(m.groupId);
+      const newFieldId = oldToNewIds.get(m.fieldId);
+      if (!newGroupId || !newFieldId) { errs++; continue; }
+      await dbCreateMovement({ id: crypto.randomUUID(), groupId: newGroupId, fieldId: newFieldId, fromDate: m.fromDate, toDate: m.toDate, note: m.note || '', photoPaths: [] });
+    } catch (e) { console.error(e); errs++; }
+  }
+  toast(`Migration fertig${errs ? ' (mit ' + errs + ' Fehlern)' : '!'} `, errs ? 'warning' : 'success');
+  refresh();
 }
 
 /* ----- Helpers ----- */
-const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
+const uid = () => crypto.randomUUID();
 const $ = (sel, ctx = document) => ctx.querySelector(sel);
 const $$ = (sel, ctx = document) => [...ctx.querySelectorAll(sel)];
 const fmtDate = (d) => {
@@ -1046,12 +1484,10 @@ function initMap() {
     attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
     maxZoom: 19,
   });
-  // Hybrid = Satellit + Beschriftungs-Overlay
-  baseLayers.hybridLabels = L.tileLayer('https://stamen-tiles-{s}.a.ssl.fastly.net/toner-labels/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; Stamen Design',
-    subdomains: 'abcd',
-    maxZoom: 18,
-    opacity: 0.7,
+  // Hybrid = Satellit + Beschriftungs-Overlay (ESRI Reference)
+  baseLayers.hybridLabels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Labels &copy; Esri',
+    maxZoom: 19,
   });
 
   setBaseLayer('map');
@@ -1549,7 +1985,7 @@ function updateDrawCounter() {
 
 function importGeoJSON(file) {
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
     try {
       const data = JSON.parse(reader.result);
       const features = data.type === 'FeatureCollection' ? data.features
@@ -1557,37 +1993,55 @@ function importGeoJSON(file) {
         : data.type === 'Polygon' || data.type === 'MultiPolygon' ? [{ type: 'Feature', geometry: data, properties: {} }]
         : null;
       if (!features) {
-        // Maybe full backup
+        // Backup-Format
         if (data.fields && data.groups && data.movements) {
-          if (confirm('Sieht aus wie ein Backup. Aktuelle Daten ersetzen?')) {
-            state.fields = data.fields;
-            state.groups = data.groups;
-            state.movements = data.movements;
-            state.settings = data.settings || state.settings;
-            saveState();
-            refresh();
-            toast('Backup wiederhergestellt');
+          if (!confirm('Sieht aus wie ein Backup. ACHTUNG: Aktuelle Cloud-Daten werden ersetzt. Fortfahren?')) return;
+          toast('Backup wird hochgeladen…');
+          // Reset DB + neu schreiben (gefährlich, daher die confirm-Frage oben)
+          await sb.from('movements').delete().not('id', 'is', null);
+          await sb.from('animals').delete().not('id', 'is', null);
+          await sb.from('groups').delete().not('id', 'is', null);
+          await sb.from('fields').delete().not('id', 'is', null);
+          state.fields = []; state.groups = []; state.movements = [];
+          // Felder neu mit fresh UUIDs
+          const fieldIdMap = new Map();
+          for (const f of data.fields) {
+            const newId = crypto.randomUUID();
+            fieldIdMap.set(f.id, newId);
+            await dbCreateField({ id: newId, name: f.name, geojson: f.geojson, areaHa: f.areaHa, notes: f.notes || '' });
           }
+          const groupIdMap = new Map();
+          for (const g of data.groups) {
+            const newId = crypto.randomUUID();
+            groupIdMap.set(g.id, newId);
+            await dbCreateGroup({ id: newId, name: g.name, category: g.category, count: g.count, color: g.color, notes: g.notes });
+            if (Array.isArray(g.animals) && g.animals.length) {
+              const animals = g.animals.map(a => ({ id: crypto.randomUUID(), tag: a.tag, stallNo: a.stallNo, birthDate: a.birthDate, notes: a.notes }));
+              await dbCreateAnimalsBulk(newId, animals);
+            }
+          }
+          for (const m of data.movements) {
+            const fid = fieldIdMap.get(m.fieldId);
+            const gid = groupIdMap.get(m.groupId);
+            if (!fid || !gid) continue;
+            await dbCreateMovement({ id: crypto.randomUUID(), groupId: gid, fieldId: fid, fromDate: m.fromDate, toDate: m.toDate, note: m.note, photoPaths: [] });
+          }
+          refresh();
+          toast('Backup wiederhergestellt');
           return;
         }
         toast('Unbekanntes Format', 'danger');
         return;
       }
       let added = 0;
-      features.forEach((feat, i) => {
-        if (!feat.geometry) return;
+      for (const feat of features) {
+        if (!feat.geometry) continue;
         const name = feat.properties?.name || feat.properties?.NAME || feat.properties?.Name || `Feld ${state.fields.length + added + 1}`;
-        state.fields.push({
-          id: uid(),
-          name,
-          geojson: feat.geometry,
-          areaHa: calcAreaHa(feat),
-          notes: '',
-          createdAt: new Date().toISOString()
-        });
-        added++;
-      });
-      saveState();
+        try {
+          await dbCreateField({ id: crypto.randomUUID(), name, geojson: feat.geometry, areaHa: calcAreaHa(feat), notes: '' });
+          added++;
+        } catch (e) { console.error(e); }
+      }
       refresh();
       fitToFields();
       toast(`${added} Felder importiert`);
@@ -1648,36 +2102,36 @@ function openFieldEdit(fieldId, prefill = null) {
     <button class="btn primary" id="f-save">Speichern</button>
   `);
   $('#f-cancel').addEventListener('click', closeModal);
-  $('#f-save').addEventListener('click', () => {
+  $('#f-save').addEventListener('click', async () => {
     const name = $('#f-name').value.trim();
     if (!name) { toast('Name erforderlich', 'warning'); return; }
-    if (isNew) {
-      state.fields.push({
-        id: uid(),
-        name,
-        geojson: f.geojson,
-        areaHa: parseFloat($('#f-area').value) || 0,
-        notes: $('#f-notes').value,
-        createdAt: new Date().toISOString()
-      });
-    } else {
-      f.name = name;
-      f.areaHa = parseFloat($('#f-area').value) || 0;
-      f.notes = $('#f-notes').value;
+    const areaHa = parseFloat($('#f-area').value) || 0;
+    const notes = $('#f-notes').value;
+    try {
+      if (isNew) {
+        await dbCreateField({ id: crypto.randomUUID(), name, geojson: f.geojson, areaHa, notes });
+      } else {
+        await dbUpdateField(fieldId, { name, geojson: f.geojson, areaHa, notes });
+      }
+      refresh();
+      closeModal();
+      toast(isNew ? 'Feld angelegt' : 'Feld aktualisiert');
+    } catch (e) {
+      console.error(e);
+      toast('Speichern fehlgeschlagen', 'danger');
     }
-    saveState();
-    refresh();
-    closeModal();
-    toast(isNew ? 'Feld angelegt' : 'Feld aktualisiert');
   });
-  $('#f-del')?.addEventListener('click', () => {
+  $('#f-del')?.addEventListener('click', async () => {
     if (!confirm('Feld wirklich löschen? Bewegungen auf diesem Feld werden auch entfernt.')) return;
-    state.movements = state.movements.filter(m => m.fieldId !== fieldId);
-    state.fields = state.fields.filter(x => x.id !== fieldId);
-    saveState();
-    refresh();
-    closeModal();
-    toast('Feld gelöscht');
+    try {
+      await dbDeleteField(fieldId);
+      refresh();
+      closeModal();
+      toast('Feld gelöscht');
+    } catch (e) {
+      console.error(e);
+      toast('Löschen fehlgeschlagen', 'danger');
+    }
   });
 }
 
@@ -1738,14 +2192,15 @@ function openGroupEdit(groupId) {
     selectedColor = el.dataset.c;
   }));
   $('#g-cancel').addEventListener('click', closeModal);
-  $('#g-animals')?.addEventListener('click', () => {
+  $('#g-animals')?.addEventListener('click', async () => {
     // Erst speichern, dann Tier-Editor öffnen
-    saveGroupChanges();
-    openAnimalsEdit(groupId);
+    const id = await saveGroupChanges();
+    if (!id) return;
+    openAnimalsEdit(id);
   });
-  function saveGroupChanges() {
+  async function saveGroupChanges() {
     const name = $('#g-name').value.trim();
-    if (!name) { toast('Name erforderlich', 'warning'); return false; }
+    if (!name) { toast('Name erforderlich', 'warning'); return null; }
     const data = {
       name,
       count: parseInt($('#g-count').value) || 0,
@@ -1753,28 +2208,44 @@ function openGroupEdit(groupId) {
       color: selectedColor,
       notes: $('#g-notes').value
     };
-    if (isNew) {
-      state.groups.push({ id: uid(), ...data, animals: [] });
-    } else {
-      Object.assign(g, data);
+    try {
+      if (isNew) {
+        const newId = crypto.randomUUID();
+        await dbCreateGroup({ id: newId, ...data });
+        return newId;
+      } else {
+        await dbUpdateGroup(groupId, data);
+        return groupId;
+      }
+    } catch (e) {
+      console.error(e);
+      toast('Speichern fehlgeschlagen', 'danger');
+      return null;
     }
-    saveState();
-    return true;
   }
-  $('#g-save').addEventListener('click', () => {
-    if (!saveGroupChanges()) return;
+  $('#g-save').addEventListener('click', async () => {
+    const id = await saveGroupChanges();
+    if (!id) return;
     refresh();
     closeModal();
     toast(isNew ? 'Gruppe angelegt' : 'Gruppe aktualisiert');
   });
-  $('#g-del')?.addEventListener('click', () => {
+  // Animals-Button (only on existing groups)
+  if (!isNew) {
+    const animalsBtn = $('#g-animals');
+    animalsBtn?.removeEventListener('click', () => {}); // noop, but listener was added in old code
+  }
+  $('#g-del')?.addEventListener('click', async () => {
     if (!confirm('Gruppe wirklich löschen? Alle Umtriebe dieser Gruppe werden entfernt.')) return;
-    state.movements = state.movements.filter(m => m.groupId !== groupId);
-    state.groups = state.groups.filter(x => x.id !== groupId);
-    saveState();
-    refresh();
-    closeModal();
-    toast('Gruppe gelöscht');
+    try {
+      await dbDeleteGroup(groupId);
+      refresh();
+      closeModal();
+      toast('Gruppe gelöscht');
+    } catch (e) {
+      console.error(e);
+      toast('Löschen fehlgeschlagen', 'danger');
+    }
   });
 }
 
@@ -1805,12 +2276,16 @@ function openAnimalsEdit(groupId) {
   function refreshList() {
     $('#animal-list').innerHTML = renderList();
     $('#animal-count').textContent = g.animals.length;
-    $$('[data-rm]').forEach(b => b.addEventListener('click', (e) => {
+    $$('[data-rm]').forEach(b => b.addEventListener('click', async (e) => {
       e.stopPropagation();
       const aid = b.dataset.rm;
-      g.animals = g.animals.filter(a => a.id !== aid);
-      saveState();
-      refreshList();
+      try {
+        await dbDeleteAnimal(aid, g.id);
+        refreshList();
+      } catch (err) {
+        console.error(err);
+        toast('Löschen fehlgeschlagen', 'danger');
+      }
     }));
   }
 
@@ -1841,7 +2316,7 @@ function openAnimalsEdit(groupId) {
     <button class="btn primary" id="animals-done">Fertig</button>
   `);
 
-  $('#single-add').addEventListener('click', () => {
+  $('#single-add').addEventListener('click', async () => {
     const tag = normalizeTag($('#single-tag').value);
     const stallNo = $('#single-stall').value.trim();
     if (!tag) { toast('Ohrmarke erforderlich', 'warning'); return; }
@@ -1849,27 +2324,30 @@ function openAnimalsEdit(groupId) {
       toast('Ohrmarke schon vorhanden', 'warning');
       return;
     }
-    g.animals.push({ id: uid(), tag, stallNo, birthDate: '', notes: '' });
-    saveState();
-    $('#single-tag').value = '';
-    $('#single-stall').value = '';
-    $('#single-tag').focus();
-    refreshList();
+    try {
+      await dbCreateAnimal(g.id, { id: crypto.randomUUID(), tag, stallNo, birthDate: '', notes: '' });
+      $('#single-tag').value = '';
+      $('#single-stall').value = '';
+      $('#single-tag').focus();
+      refreshList();
+    } catch (e) {
+      console.error(e);
+      toast('Speichern fehlgeschlagen', 'danger');
+    }
   });
   $('#single-tag').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); $('#single-add').click(); }
   });
 
-  $('#bulk-add').addEventListener('click', () => {
+  $('#bulk-add').addEventListener('click', async () => {
     const text = $('#bulk-tags').value;
     if (!text.trim()) return;
     const lines = text.split(/[\n,;]/).map(s => s.trim()).filter(Boolean);
     let added = 0, skipped = 0;
+    const newAnimals = [];
     for (const line of lines) {
-      // Optional: "DE 09 12345678" oder "DE 09 12345678 | Stall 42" o.ä.
       let tag = normalizeTag(line);
       let stallNo = '';
-      // Wenn Pipe oder Tab drin: rechte Seite als Stall-Nr
       const split = line.split(/[\t|]/);
       if (split.length > 1) {
         tag = normalizeTag(split[0]);
@@ -1880,13 +2358,22 @@ function openAnimalsEdit(groupId) {
         skipped++;
         continue;
       }
-      g.animals.push({ id: uid(), tag, stallNo, birthDate: '', notes: '' });
+      if (newAnimals.some(a => searchableTag(a.tag) === searchableTag(tag))) {
+        skipped++;
+        continue;
+      }
+      newAnimals.push({ id: crypto.randomUUID(), tag, stallNo, birthDate: '', notes: '' });
       added++;
     }
-    saveState();
-    $('#bulk-tags').value = '';
-    refreshList();
-    toast(`${added} hinzugefügt${skipped ? ', ' + skipped + ' Duplikate übersprungen' : ''}`, 'success');
+    try {
+      if (newAnimals.length) await dbCreateAnimalsBulk(g.id, newAnimals);
+      $('#bulk-tags').value = '';
+      refreshList();
+      toast(`${added} hinzugefügt${skipped ? ', ' + skipped + ' Duplikate übersprungen' : ''}`, 'success');
+    } catch (e) {
+      console.error(e);
+      toast('Massenimport fehlgeschlagen', 'danger');
+    }
   });
 
   $('#animals-done').addEventListener('click', () => {
@@ -1967,45 +2454,48 @@ async function openMoveModal() {
     inp.value = '';
     inp.onchange = async (e) => {
       for (const file of e.target.files) {
-        const id = uid();
-        await savePhoto(id, file);
-        const url = URL.createObjectURL(file);
-        stagedPhotos.push({ id, url });
-        renderPhotoGrid();
+        try {
+          const path = await savePhoto(file);
+          const url = URL.createObjectURL(file);
+          stagedPhotos.push({ path, url });
+          renderPhotoGrid();
+        } catch (err) {
+          console.error(err);
+          toast('Foto-Upload fehlgeschlagen', 'danger');
+        }
       }
     };
     inp.click();
   });
 
   function renderPhotoGrid() {
-    $('#m-photos').innerHTML = stagedPhotos.map(p => `
+    $('#m-photos').innerHTML = stagedPhotos.map((p, i) => `
       <div class="photo-thumb">
         <img src="${p.url}" alt="" />
-        <button class="rm" data-rm="${p.id}">×</button>
+        <button class="rm" data-rm="${i}">×</button>
       </div>
     `).join('');
     $$('.rm[data-rm]').forEach(b => b.addEventListener('click', async () => {
-      const id = b.dataset.rm;
-      await deletePhoto(id);
-      const idx = stagedPhotos.findIndex(p => p.id === id);
-      if (idx >= 0) {
-        URL.revokeObjectURL(stagedPhotos[idx].url);
-        stagedPhotos.splice(idx, 1);
-      }
+      const i = parseInt(b.dataset.rm);
+      const p = stagedPhotos[i];
+      if (!p) return;
+      try { await deletePhoto(p.path); } catch {}
+      URL.revokeObjectURL(p.url);
+      stagedPhotos.splice(i, 1);
       renderPhotoGrid();
     }));
   }
 
   $('#m-cancel').addEventListener('click', async () => {
-    // Cleanup staged photos that were never saved
+    // Cleanup uploaded photos
     for (const p of stagedPhotos) {
-      await deletePhoto(p.id);
+      try { await deletePhoto(p.path); } catch {}
       URL.revokeObjectURL(p.url);
     }
     closeModal();
   });
 
-  $('#m-save').addEventListener('click', () => {
+  $('#m-save').addEventListener('click', async () => {
     const groupId = $('#m-group').value;
     const fieldId = $('#m-field').value;
     const date = $('#m-date').value;
@@ -2013,27 +2503,28 @@ async function openMoveModal() {
 
     // Close current movement of this group, if any
     const current = getCurrentMovement(groupId);
-    if (current) {
-      if (current.fieldId === fieldId) {
-        toast('Gruppe ist bereits auf diesem Feld', 'warning');
-        return;
-      }
-      current.toDate = date;
+    if (current && current.fieldId === fieldId) {
+      toast('Gruppe ist bereits auf diesem Feld', 'warning');
+      return;
     }
-
-    state.movements.push({
-      id: uid(),
-      groupId,
-      fieldId,
-      fromDate: date,
-      toDate: null,
-      note: $('#m-note').value,
-      photoIds: stagedPhotos.map(p => p.id)
-    });
-    saveState();
-    refresh();
-    closeModal();
-    toast('Umtrieb erfasst', 'success');
+    try {
+      if (current) await dbCloseMovement(current.id, date);
+      await dbCreateMovement({
+        id: crypto.randomUUID(),
+        groupId,
+        fieldId,
+        fromDate: date,
+        toDate: null,
+        note: $('#m-note').value,
+        photoPaths: stagedPhotos.map(p => p.path)
+      });
+      refresh();
+      closeModal();
+      toast('Umtrieb erfasst', 'success');
+    } catch (e) {
+      console.error(e);
+      toast('Speichern fehlgeschlagen', 'danger');
+    }
   });
 }
 
@@ -2103,14 +2594,17 @@ function openFieldDetail(fieldId) {
       map.fitBounds(layer.getBounds(), { padding: [40, 40] });
     } catch {}
   });
-  $('#fd-del').addEventListener('click', () => {
+  $('#fd-del').addEventListener('click', async () => {
     if (!confirm('Feld wirklich löschen?')) return;
-    state.movements = state.movements.filter(m => m.fieldId !== fieldId);
-    state.fields = state.fields.filter(x => x.id !== fieldId);
-    saveState();
-    refresh();
-    closeModal();
-    toast('Feld gelöscht');
+    try {
+      await dbDeleteField(fieldId);
+      refresh();
+      closeModal();
+      toast('Feld gelöscht');
+    } catch (e) {
+      console.error(e);
+      toast('Löschen fehlgeschlagen', 'danger');
+    }
   });
 }
 
@@ -2181,20 +2675,29 @@ function openGroupDetail(groupId) {
     openMoveModal();
     setTimeout(() => { const sel = $('#m-group'); if (sel) sel.value = groupId; }, 50);
   });
-  $('#gd-del').addEventListener('click', () => {
+  $('#gd-del').addEventListener('click', async () => {
     if (!confirm('Gruppe wirklich löschen?')) return;
-    state.movements = state.movements.filter(m => m.groupId !== groupId);
-    state.groups = state.groups.filter(x => x.id !== groupId);
-    saveState();
-    refresh();
-    closeModal();
-    toast('Gruppe gelöscht');
+    try {
+      await dbDeleteGroup(groupId);
+      refresh();
+      closeModal();
+      toast('Gruppe gelöscht');
+    } catch (e) {
+      console.error(e);
+      toast('Löschen fehlgeschlagen', 'danger');
+    }
   });
 }
 
 /* ----- Settings ----- */
 function openSettings() {
+  const hasLegacy = !!localStorage.getItem(LEGACY_STORAGE_KEY);
+  const userEmail = currentUser?.email || '—';
   openModal('Einstellungen', `
+    <div class="field">
+      <label>Angemeldet als</label>
+      <div style="font-family:'DM Mono',monospace;font-size:13px;color:var(--muted);padding:8px 0">${escapeHtml(userEmail)}</div>
+    </div>
     <div class="field">
       <label>Warnung bei langer Belegung (Tage)</label>
       <input type="number" id="s-reminder" value="${state.settings.reminderDays}" min="1" max="365" />
@@ -2203,12 +2706,14 @@ function openSettings() {
     <div class="btn-row" style="flex-direction:column;gap:8px">
       <button class="btn full" id="s-export">📥 Backup exportieren (JSON)</button>
       <button class="btn full" id="s-import">📤 Backup importieren</button>
-      <button class="btn full danger" id="s-reset">Alle Daten löschen</button>
+      ${hasLegacy ? '<button class="btn full primary" id="s-migrate">⤴ Alte lokale Daten in Cloud migrieren</button>' : ''}
+      <button class="btn full danger" id="s-reset">Alle Cloud-Daten löschen</button>
     </div>
+    <h2 class="section-title">Konto</h2>
+    <button class="btn full" id="s-logout">Abmelden</button>
     <div class="alert" style="margin-top:16px">
-      <strong>Lokal gespeichert</strong>
-      Daten liegen ausschließlich im Browser. Regelmäßige Backups empfohlen.
-      Auf iOS ist die direkte Datei-Synchronisation nicht möglich — bitte JSON-Export nutzen.
+      <strong>Cloud-Sync aktiv</strong>
+      Daten werden in Supabase (EU/Stockholm) gespeichert und mit allen angemeldeten Geräten synchronisiert.
     </div>
   `, `
     <button class="btn ghost" id="s-cancel">Schließen</button>
@@ -2217,23 +2722,38 @@ function openSettings() {
   $('#s-cancel').addEventListener('click', closeModal);
   $('#s-save').addEventListener('click', () => {
     state.settings.reminderDays = parseInt($('#s-reminder').value) || 14;
-    saveState();
+    saveLocalSettings();
     refresh();
     closeModal();
     toast('Einstellungen gespeichert');
   });
   $('#s-export').addEventListener('click', exportBackup);
   $('#s-import').addEventListener('click', () => $('#file-import').click());
-  $('#s-reset').addEventListener('click', () => {
-    if (!confirm('WIRKLICH alle Daten löschen? Das kann nicht rückgängig gemacht werden.')) return;
-    if (!confirm('Letzte Warnung — alle Felder, Gruppen, Umtriebe und Fotos werden gelöscht.')) return;
-    state = { fields: [], groups: [], movements: [], settings: { reminderDays: 14 } };
-    saveState();
-    indexedDB.deleteDatabase(DB_NAME);
-    dbPromise = null;
-    refresh();
+  $('#s-logout').addEventListener('click', async () => {
+    if (!confirm('Wirklich abmelden?')) return;
+    await signOut();
+  });
+  $('#s-migrate')?.addEventListener('click', async () => {
     closeModal();
-    toast('Alles zurückgesetzt');
+    await migrateLegacyData();
+  });
+  $('#s-reset').addEventListener('click', async () => {
+    if (!confirm('WIRKLICH alle Cloud-Daten löschen? Das kann nicht rückgängig gemacht werden und betrifft auch andere angemeldete Nutzer.')) return;
+    if (!confirm('Letzte Warnung — alle Felder, Gruppen, Tiere, Umtriebe und Fotos werden gelöscht.')) return;
+    try {
+      await sb.from('movements').delete().not('id', 'is', null);
+      await sb.from('animals').delete().not('id', 'is', null);
+      await sb.from('groups').delete().not('id', 'is', null);
+      await sb.from('fields').delete().not('id', 'is', null);
+      state.fields = []; state.groups = []; state.movements = [];
+      saveLocalBackup();
+      refresh();
+      closeModal();
+      toast('Cloud-Daten gelöscht');
+    } catch (e) {
+      console.error(e);
+      toast('Reset fehlgeschlagen', 'danger');
+    }
   });
 }
 
@@ -2369,10 +2889,86 @@ function refresh() {
 /* ============================================================
    INIT
    ============================================================ */
-function init() {
-  loadState();
-  initMap();
 
+/* UI-Hilfen für Login/Loading-Screens */
+function showLoginOverlay(show, statusText = '', statusType = '') {
+  const overlay = document.getElementById('login-overlay');
+  const status = document.getElementById('login-status');
+  overlay.classList.toggle('hidden', !show);
+  if (statusText) {
+    status.textContent = statusText;
+    status.className = 'login-status show ' + statusType;
+  } else {
+    status.classList.remove('show');
+  }
+}
+function showLoading(show, text = 'Verbinde…') {
+  const el = document.getElementById('app-loading');
+  document.getElementById('loading-text').textContent = text;
+  el.classList.toggle('hidden', !show);
+}
+
+async function init() {
+  showLoading(true, 'Verbinde mit Server…');
+  loadLocalSettings();
+  // Map kann sofort initialisiert werden (gehört nicht zu den DB-Daten)
+  initMap();
+  setupListeners();
+
+  // Login-Form binden
+  document.getElementById('login-btn').addEventListener('click', async () => {
+    const email = document.getElementById('login-email').value.trim();
+    if (!email) { showLoginOverlay(true, 'Bitte E-Mail eingeben', 'error'); return; }
+    showLoginOverlay(true, 'Sende Link…', '');
+    const { error } = await signInWithMagicLink(email);
+    if (error) {
+      showLoginOverlay(true, error.message, 'error');
+    } else {
+      showLoginOverlay(true, `Link an ${email} geschickt — Mail-App öffnen und auf den Link tippen.`, 'success');
+    }
+  });
+  document.getElementById('login-email').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('login-btn').click();
+  });
+
+  // Auth-Status-Listener
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (session && session.user) {
+      currentUser = session.user;
+      showLoginOverlay(false);
+      showLoading(true, 'Lade Daten…');
+      try {
+        await dbLoadAll();
+        setupRealtime();
+        showLoading(false);
+        fitToFields();
+      } catch (e) {
+        console.error(e);
+        // Offline-Fallback: lokale Daten zeigen, wenn vorhanden
+        loadLocalBackup();
+        setSyncState('offline');
+        showLoading(false);
+        toast('Offline — zeige zuletzt geladene Daten', 'warning');
+      }
+      refresh();
+    } else if (event === 'SIGNED_OUT') {
+      currentUser = null;
+      setSyncState('offline', 'Abgemeldet');
+      showLoading(false);
+      showLoginOverlay(true);
+    }
+  });
+
+  // Initial check: schon eingeloggt?
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) {
+    showLoading(false);
+    showLoginOverlay(true);
+  }
+  // Andernfalls übernimmt der onAuthStateChange-Handler oben
+}
+
+function setupListeners() {
   $$('.bottom-nav button').forEach(b =>
     b.addEventListener('click', () => switchView(b.dataset.target))
   );
@@ -2398,7 +2994,6 @@ function init() {
     e.target.value = '';
   });
 
-  // Keyboard shortcut: "/" oder "f" öffnet Suche
   document.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
     if (e.key === '/' || e.key === 'f') {
@@ -2407,14 +3002,9 @@ function init() {
     }
   });
 
-  fitToFields();
-
-  // First-run helper
-  if (!state.fields.length && !state.groups.length) {
-    setTimeout(() => {
-      toast('Willkommen! Lege unter „Verwalten" deine Felder und Gruppen an.');
-    }, 800);
-  }
+  // Online/Offline-Status überwachen
+  window.addEventListener('online', () => { if (currentUser) setupRealtime(); });
+  window.addEventListener('offline', () => setSyncState('offline'));
 }
 
 window.addEventListener('DOMContentLoaded', init);

@@ -6,7 +6,7 @@
    Cache-Version hochzählen bei Code-Änderungen erzwingt Update.
 */
 
-const VERSION = 'v1.4.1';
+const VERSION = 'v2.0.0';
 const SHELL_CACHE = `weidemanager-shell-${VERSION}`;
 const LIBS_CACHE  = `weidemanager-libs-${VERSION}`;
 const TILES_CACHE = `weidemanager-tiles-v1`;
@@ -17,6 +17,7 @@ const SHELL_FILES = [
   './',
   './index.html',
   './manifest.json',
+  './config.js',
   './icon-192.png',
   './icon-512.png',
   './icon-512-maskable.png',
@@ -29,7 +30,14 @@ const LIB_HOSTS = [
   'fonts.gstatic.com'
 ];
 const TILE_HOSTS = [
-  'basemaps.cartocdn.com'
+  'basemaps.cartocdn.com',
+  'arcgisonline.com',
+  'fastly.net'
+];
+// Dynamische APIs niemals cachen — immer Netz
+const PASSTHROUGH_HOSTS = [
+  'supabase.co',
+  'supabase.io'
 ];
 
 self.addEventListener('install', (event) => {
@@ -56,6 +64,11 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
 
   const url = new URL(req.url);
+
+  // Supabase API / Realtime: nicht cachen, direkt durchreichen
+  if (PASSTHROUGH_HOSTS.some(h => url.hostname.endsWith(h))) {
+    return; // SW handhabt das nicht — Browser geht direkt zum Netz
+  }
 
   // Map-Tiles → stale-while-revalidate
   if (TILE_HOSTS.some(h => url.hostname.endsWith(h))) {

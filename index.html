@@ -682,6 +682,64 @@
     cursor: pointer;
   }
   .animal-row .rm-btn:hover { background: var(--surface-2); color: var(--danger); }
+  .animal-row .move-btn {
+    background: transparent; border: 0; color: var(--accent);
+    width: 24px; height: 24px; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+  .animal-row .move-btn:hover { background: rgba(61, 138, 77, 0.1); }
+  .animal-row.selected {
+    background: rgba(61, 138, 77, 0.08);
+  }
+  .animal-row .sel-check {
+    width: 18px; height: 18px;
+    border: 2px solid var(--border);
+    border-radius: 4px;
+    flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: background .15s, border-color .15s;
+  }
+  .animal-row .sel-check.on {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .animal-row .sel-check.on::after {
+    content: "✓"; color: #fff; font-size: 12px; line-height: 1; font-weight: 700;
+  }
+
+  /* Bulk action bar */
+  .bulk-bar {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface-2);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .bulk-bar .btn { padding: 6px 10px; font-size: 13px; }
+
+  /* Target group selection */
+  .target-list {
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .target-row {
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    display: flex; align-items: center; gap: 10px;
+    cursor: pointer; text-align: left;
+    transition: border-color .15s, background .15s;
+  }
+  .target-row:hover { border-color: var(--accent); background: var(--surface-2); }
+  .target-row .swatch { width: 4px; align-self: stretch; min-height: 32px; border-radius: 2px; flex-shrink: 0; }
+  .target-row .target-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .target-row .target-name { font-weight: 500; font-size: 14px; }
+  .target-row .target-meta { color: var(--muted); font-size: 12px; }
+  .target-row .target-arrow { color: var(--muted-soft); }
   .animal-empty {
     padding: 16px 10px; text-align: center;
     color: var(--muted); font-size: 12px;
@@ -873,7 +931,7 @@
   </header>
 
   <main id="view">
-    <section class="view-pane map-pane active" data-view="map">
+    <section class="view-pane map-pane" data-view="map">
       <div id="map"></div>
       <div class="map-overlay">
         <button class="map-overlay-btn" id="btn-fit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V3h4M21 7V3h-4M3 17v4h4M21 17v4h-4"/></svg> Alle Felder</button>
@@ -889,7 +947,7 @@
       </button>
     </section>
 
-    <section class="view-pane" data-view="list">
+    <section class="view-pane active" data-view="list">
       <div class="content" id="content-list"></div>
     </section>
 
@@ -907,13 +965,13 @@
   </main>
 
   <nav class="bottom-nav">
-    <button data-target="map" class="active">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg>
-      <span>Karte</span>
-    </button>
-    <button data-target="list">
+    <button data-target="list" class="active">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>
       <span>Liste</span>
+    </button>
+    <button data-target="map">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg>
+      <span>Karte</span>
     </button>
     <button data-target="timeline">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="14" height="3" rx="1"/><rect x="7" y="11" width="14" height="3" rx="1"/><rect x="5" y="17" width="12" height="3" rx="1"/></svg>
@@ -1026,7 +1084,7 @@ function groupFromDb(row) {
   return { id: row.id, name: row.name, category: row.category || 'Sonstige', count: row.count || 0, color: row.color || '#3d8a4d', notes: row.notes || '', animals: [] };
 }
 function groupToDb(g) {
-  return { id: g.id, name: g.name, category: g.category || 'Sonstige', count: g.count || 0, color: g.color || '#3d8a4d', notes: g.notes || '' };
+  return { id: g.id, name: g.name, category: g.category || 'Sonstige', count: 0, color: g.color || '#3d8a4d', notes: g.notes || '' };
 }
 function animalFromDb(row) {
   return { id: row.id, groupId: row.group_id, tag: row.tag, stallNo: row.stall_no || '', birthDate: row.birth_date || '', notes: row.notes || '' };
@@ -1155,6 +1213,24 @@ async function dbDeleteAnimal(animalId, groupId) {
   const g = state.groups.find(x => x.id === groupId);
   if (g) g.animals = g.animals.filter(a => a.id !== animalId);
   saveLocalBackup();
+}
+
+/* Tier(e) in eine andere Gruppe verschieben */
+async function dbMoveAnimals(animalIds, fromGroupId, toGroupId) {
+  if (!animalIds.length || fromGroupId === toGroupId) return;
+  const { data, error } = await sb.from('animals').update({ group_id: toGroupId }).in('id', animalIds).select();
+  if (error) throw error;
+  // Lokal aktualisieren
+  const fromG = state.groups.find(x => x.id === fromGroupId);
+  const toG = state.groups.find(x => x.id === toGroupId);
+  if (fromG && toG) {
+    const moved = fromG.animals.filter(a => animalIds.includes(a.id));
+    moved.forEach(a => a.groupId = toGroupId);
+    fromG.animals = fromG.animals.filter(a => !animalIds.includes(a.id));
+    toG.animals = [...toG.animals, ...moved];
+  }
+  saveLocalBackup();
+  return data;
 }
 
 async function dbCreateMovement(movement) {
@@ -1399,6 +1475,11 @@ function getFieldOccupiedDaysThisYear(fieldId) {
     });
   return total;
 }
+/* Anzahl Tiere einer Gruppe = Länge der animals-Liste */
+function groupAnimalCount(g) {
+  return Array.isArray(g.animals) ? g.animals.length : 0;
+}
+
 function findFieldContainingPoint(lat, lng) {
   const pt = turf.point([lng, lat]);
   for (const f of state.fields) {
@@ -1559,7 +1640,7 @@ function renderFieldsOnMap() {
       const centroid = turf.centroid(f.geojson);
       const [lng, lat] = centroid.geometry.coordinates;
       const labelHtml = groups.length
-        ? `<div class="field-label-inner has-group"><div>${escapeHtml(f.name)}</div><div class="label-count">${groups.map(g => escapeHtml(g.name) + ' · ' + g.count).join(' / ')}</div></div>`
+        ? `<div class="field-label-inner has-group"><div>${escapeHtml(f.name)}</div><div class="label-count">${groups.map(g => escapeHtml(g.name) + ' · ' + groupAnimalCount(g)).join(' / ')}</div></div>`
         : `<div class="field-label-inner"><div>${escapeHtml(f.name)}</div><div class="label-count">leer · ${f.areaHa.toFixed(1)} ha</div></div>`;
       L.marker([lat, lng], {
         icon: L.divIcon({ className: 'field-label', html: labelHtml, iconSize: null })
@@ -1620,7 +1701,7 @@ function renderListByGroup(body) {
       <div class="card clickable" data-group="${g.id}">
         <div class="swatch" style="background:${g.color}"></div>
         <div class="card-body">
-          <div class="card-title">${escapeHtml(g.name)} <span class="badge">${g.count} Tiere</span></div>
+          <div class="card-title">${escapeHtml(g.name)} <span class="badge">${groupAnimalCount(g)} Tiere</span></div>
           <div class="card-sub">
             <span>${field ? '📍 ' + escapeHtml(field.name) : '⚠ kein Feld zugewiesen'}</span>
             ${mv ? `<span class="mono">seit ${fmtDate(mv.fromDate)} · ${since} Tage</span>` : ''}
@@ -1648,7 +1729,7 @@ function renderListByField(body) {
           <div class="card-title">${escapeHtml(f.name)} <span class="badge">${f.areaHa.toFixed(1)} ha</span></div>
           <div class="card-sub">
             ${groups.length
-              ? '<span>' + groups.map(g => '🐄 ' + escapeHtml(g.name) + ' (' + g.count + ')').join(', ') + '</span>'
+              ? '<span>' + groups.map(g => '🐄 ' + escapeHtml(g.name) + ' (' + groupAnimalCount(g) + ')').join(', ') + '</span>'
               : (rest === null ? '<span class="badge">noch nie belegt</span>' : `<span class="badge success">Weideruhe ${rest}d</span>`)
             }
           </div>
@@ -1830,7 +1911,7 @@ function renderManage() {
         <div class="card clickable" data-group-edit="${g.id}">
           <div class="swatch" style="background:${g.color}"></div>
           <div class="card-body">
-            <div class="card-title">${escapeHtml(g.name)} <span class="badge">${g.count}</span></div>
+            <div class="card-title">${escapeHtml(g.name)} <span class="badge">${groupAnimalCount(g)}</span></div>
             <div class="card-sub">
               <span>${escapeHtml(g.category || '')}</span>
               ${animals > 0 ? `<span class="mono">${animals} Ohrmarken</span>` : ''}
@@ -2144,28 +2225,32 @@ function openFieldEdit(fieldId, prefill = null) {
 /* ----- Group edit ----- */
 function openGroupEdit(groupId) {
   const g = groupId ? state.groups.find(x => x.id === groupId) : {
-    name: '', count: 0, category: CATEGORIES[0],
+    name: '', category: CATEGORIES[0],
     color: GROUP_COLORS[state.groups.length % GROUP_COLORS.length],
     notes: '', animals: []
   };
   if (!Array.isArray(g.animals)) g.animals = [];
   const isNew = !groupId;
+  const currentMv = !isNew ? getCurrentMovement(groupId) : null;
+  const currentFieldId = currentMv?.fieldId || '';
+
   openModal(isNew ? 'Neue Gruppe' : 'Gruppe bearbeiten', `
     <div class="field">
       <label>Name</label>
       <input type="text" id="g-name" value="${escapeHtml(g.name)}" placeholder="z. B. Jungrinder 2024" />
     </div>
-    <div class="field-row">
-      <div class="field">
-        <label>Anzahl Tiere</label>
-        <input type="number" id="g-count" value="${g.count}" min="0" />
-      </div>
-      <div class="field">
-        <label>Kategorie</label>
-        <select id="g-cat">
-          ${CATEGORIES.map(c => `<option ${c === g.category ? 'selected' : ''}>${c}</option>`).join('')}
-        </select>
-      </div>
+    <div class="field">
+      <label>Kategorie</label>
+      <select id="g-cat">
+        ${CATEGORIES.map(c => `<option ${c === g.category ? 'selected' : ''}>${c}</option>`).join('')}
+      </select>
+    </div>
+    <div class="field">
+      <label>Aktuelles Feld ${isNew ? '<span style="color:var(--muted);font-weight:400">(optional)</span>' : ''}</label>
+      <select id="g-field">
+        <option value="">${isNew ? '— später zuweisen —' : '— kein Feld —'}</option>
+        ${state.fields.map(f => `<option value="${f.id}" ${f.id === currentFieldId ? 'selected' : ''}>${escapeHtml(f.name)} (${f.areaHa.toFixed(1)} ha)</option>`).join('')}
+      </select>
     </div>
     <div class="field">
       <label>Farbe</label>
@@ -2175,11 +2260,10 @@ function openGroupEdit(groupId) {
     </div>
     ${!isNew ? `
     <div class="field">
-      <label>Tiere mit Ohrmarken (${g.animals.length})</label>
+      <label>Tiere mit Ohrmarken</label>
       <button class="btn full" id="g-animals" style="text-align:left">
         ${g.animals.length === 0 ? '+ Tiere erfassen' : `${g.animals.length} Tier${g.animals.length === 1 ? '' : 'e'} verwalten →`}
       </button>
-      ${g.animals.length > 0 && g.animals.length !== g.count ? `<div style="color:var(--warning);font-size:11px;margin-top:4px">⚠ Anzahl (${g.count}) und erfasste Tiere (${g.animals.length}) stimmen nicht überein</div>` : ''}
     </div>` : '<div class="alert">Nach dem Speichern kannst du einzelne Tiere mit Ohrmarken erfassen.</div>'}
     <div class="field">
       <label>Notiz</label>
@@ -2207,22 +2291,42 @@ function openGroupEdit(groupId) {
   async function saveGroupChanges() {
     const name = $('#g-name').value.trim();
     if (!name) { toast('Name erforderlich', 'warning'); return null; }
+    const fieldId = $('#g-field').value || '';
     const data = {
       name,
-      count: parseInt($('#g-count').value) || 0,
       category: $('#g-cat').value,
       color: selectedColor,
       notes: $('#g-notes').value
     };
     try {
+      let resultId;
       if (isNew) {
-        const newId = crypto.randomUUID();
-        await dbCreateGroup({ id: newId, ...data });
-        return newId;
+        resultId = crypto.randomUUID();
+        await dbCreateGroup({ id: resultId, ...data });
       } else {
         await dbUpdateGroup(groupId, data);
-        return groupId;
+        resultId = groupId;
       }
+      // Feld-Zuweisung: wenn anders als aktuelles, neues Movement anlegen
+      if (fieldId && fieldId !== currentFieldId) {
+        const today_ = today();
+        if (currentMv) {
+          await dbCloseMovement(currentMv.id, today_);
+        }
+        await dbCreateMovement({
+          id: crypto.randomUUID(),
+          groupId: resultId,
+          fieldId,
+          fromDate: today_,
+          toDate: null,
+          note: '',
+          photoPaths: []
+        });
+      } else if (!fieldId && currentMv) {
+        // Feld entfernt → aktuelles Movement schließen
+        await dbCloseMovement(currentMv.id, today());
+      }
+      return resultId;
     } catch (e) {
       console.error(e);
       toast('Speichern fehlgeschlagen', 'danger');
@@ -2236,11 +2340,6 @@ function openGroupEdit(groupId) {
     closeModal();
     toast(isNew ? 'Gruppe angelegt' : 'Gruppe aktualisiert');
   });
-  // Animals-Button (only on existing groups)
-  if (!isNew) {
-    const animalsBtn = $('#g-animals');
-    animalsBtn?.removeEventListener('click', () => {}); // noop, but listener was added in old code
-  }
   $('#g-del')?.addEventListener('click', async () => {
     if (!confirm('Gruppe wirklich löschen? Alle Umtriebe dieser Gruppe werden entfernt.')) return;
     try {
@@ -2255,11 +2354,103 @@ function openGroupEdit(groupId) {
   });
 }
 
+/* ----- Tier(e) in andere Gruppe verschieben ----- */
+function openMoveAnimalsDialog(animalIds, fromGroupId) {
+  const fromG = state.groups.find(g => g.id === fromGroupId);
+  if (!fromG) return;
+  const targets = state.groups.filter(g => g.id !== fromGroupId);
+
+  const animalSummary = animalIds.length === 1
+    ? (fromG.animals.find(a => a.id === animalIds[0])?.tag || '')
+    : `${animalIds.length} Tiere`;
+
+  openModal('In andere Gruppe verschieben', `
+    <div class="alert">
+      <strong>${escapeHtml(animalSummary)}</strong>
+      Von: ${escapeHtml(fromG.name)}
+    </div>
+    ${targets.length === 0 ? `
+      <p style="color:var(--muted);font-size:13px;margin:8px 0 16px">
+        Keine andere Gruppe vorhanden. Lege erst eine zweite Gruppe an, dann kannst du verschieben.
+      </p>
+      <button class="btn primary full" id="ma-newgroup">+ Neue Gruppe anlegen</button>
+    ` : `
+      <div class="field">
+        <label>Ziel-Gruppe wählen</label>
+        <div class="target-list">
+          ${targets.map(g => {
+            const mv = getCurrentMovement(g.id);
+            const field = mv ? state.fields.find(f => f.id === mv.fieldId) : null;
+            return `
+              <button class="target-row" data-target="${g.id}">
+                <span class="swatch" style="background:${g.color}"></span>
+                <span class="target-body">
+                  <span class="target-name">${escapeHtml(g.name)}</span>
+                  <span class="target-meta">${groupAnimalCount(g)} Tiere${field ? ' · auf ' + escapeHtml(field.name) : ''}</span>
+                </span>
+                <span class="target-arrow">→</span>
+              </button>
+            `;
+          }).join('')}
+        </div>
+      </div>
+      <button class="btn full" id="ma-newgroup">+ Neue Gruppe anlegen und verschieben</button>
+    `}
+  `, `
+    <div style="flex:1"></div>
+    <button class="btn ghost" id="ma-cancel">Abbrechen</button>
+  `);
+
+  $('#ma-cancel').addEventListener('click', closeModal);
+  $$('[data-target]').forEach(btn => btn.addEventListener('click', async () => {
+    const toId = btn.dataset.target;
+    try {
+      await dbMoveAnimals(animalIds, fromGroupId, toId);
+      const toG = state.groups.find(g => g.id === toId);
+      refresh();
+      closeModal();
+      toast(`${animalIds.length} → ${toG?.name}`, 'success');
+      // Tier-Modal wieder öffnen mit der Quell-Gruppe
+      setTimeout(() => openAnimalsEdit(fromGroupId), 200);
+    } catch (e) {
+      console.error(e);
+      toast('Verschieben fehlgeschlagen', 'danger');
+    }
+  }));
+  $('#ma-newgroup').addEventListener('click', () => {
+    const name = prompt('Name der neuen Gruppe?', '');
+    if (!name?.trim()) return;
+    (async () => {
+      try {
+        const newId = crypto.randomUUID();
+        await dbCreateGroup({
+          id: newId,
+          name: name.trim(),
+          category: 'Sonstige',
+          color: GROUP_COLORS[state.groups.length % GROUP_COLORS.length],
+          notes: ''
+        });
+        await dbMoveAnimals(animalIds, fromGroupId, newId);
+        refresh();
+        closeModal();
+        toast(`${animalIds.length} → ${name.trim()}`, 'success');
+        setTimeout(() => openAnimalsEdit(fromGroupId), 200);
+      } catch (e) {
+        console.error(e);
+        toast('Fehler beim Anlegen/Verschieben', 'danger');
+      }
+    })();
+  });
+}
+
 /* ----- Tier-Verwaltung pro Gruppe ----- */
 function openAnimalsEdit(groupId) {
   const g = state.groups.find(x => x.id === groupId);
   if (!g) return;
   if (!Array.isArray(g.animals)) g.animals = [];
+
+  let selectedIds = new Set();
+  let longPressTimer = null;
 
   function renderList() {
     if (!g.animals.length) {
@@ -2268,37 +2459,98 @@ function openAnimalsEdit(groupId) {
     return g.animals
       .slice()
       .sort((a, b) => searchableTag(a.tag).localeCompare(searchableTag(b.tag)))
-      .map(a => `
-        <div class="animal-row" data-aid="${a.id}">
+      .map(a => {
+        const isSel = selectedIds.has(a.id);
+        return `
+        <div class="animal-row ${isSel ? 'selected' : ''}" data-aid="${a.id}">
+          ${selectedIds.size > 0 ? `<span class="sel-check ${isSel ? 'on' : ''}" data-sel="${a.id}"></span>` : ''}
           <span class="tag">${escapeHtml(a.tag)}</span>
           ${a.stallNo ? `<span class="stall">Stall ${escapeHtml(a.stallNo)}</span>` : ''}
+          <button class="move-btn" data-move="${a.id}" title="In andere Gruppe verschieben">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+          </button>
           <button class="rm-btn" data-rm="${a.id}" title="Entfernen">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
         </div>
-      `).join('');
+      `;
+      }).join('');
+  }
+
+  function renderBulkBar() {
+    const bar = $('#bulk-bar');
+    if (!bar) return;
+    if (selectedIds.size === 0) {
+      bar.style.display = 'none';
+    } else {
+      bar.style.display = 'flex';
+      $('#bulk-count').textContent = `${selectedIds.size} ausgewählt`;
+    }
   }
 
   function refreshList() {
     $('#animal-list').innerHTML = renderList();
     $('#animal-count').textContent = g.animals.length;
+    attachRowListeners();
+    renderBulkBar();
+  }
+
+  function attachRowListeners() {
     $$('[data-rm]').forEach(b => b.addEventListener('click', async (e) => {
       e.stopPropagation();
       const aid = b.dataset.rm;
       try {
         await dbDeleteAnimal(aid, g.id);
+        selectedIds.delete(aid);
         refreshList();
       } catch (err) {
         console.error(err);
         toast('Löschen fehlgeschlagen', 'danger');
       }
     }));
+    $$('[data-move]').forEach(b => b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const aid = b.dataset.move;
+      openMoveAnimalsDialog([aid], g.id);
+    }));
+    // Long-press / right-click → Mehrfachauswahl starten
+    $$('.animal-row').forEach(row => {
+      const aid = row.dataset.aid;
+      row.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        toggleSelect(aid);
+      });
+      row.addEventListener('touchstart', () => {
+        clearTimeout(longPressTimer);
+        longPressTimer = setTimeout(() => toggleSelect(aid), 500);
+      }, { passive: true });
+      row.addEventListener('touchend', () => clearTimeout(longPressTimer));
+      row.addEventListener('touchmove', () => clearTimeout(longPressTimer));
+      // Wenn schon im Auswahl-Modus, Tippen toggelt
+      row.addEventListener('click', (e) => {
+        if (selectedIds.size > 0 && !e.target.closest('button')) {
+          toggleSelect(aid);
+        }
+      });
+    });
+  }
+
+  function toggleSelect(aid) {
+    if (selectedIds.has(aid)) selectedIds.delete(aid);
+    else selectedIds.add(aid);
+    refreshList();
   }
 
   openModal(`Tiere — ${escapeHtml(g.name)}`, `
     <div class="alert">
-      <strong>Erfasste Tiere: <span id="animal-count">${g.animals.length}</span> / ${g.count}</strong>
-      Die Suche oben findet diese Tiere per Ohrmarke.
+      <strong>Erfasste Tiere: <span id="animal-count">${g.animals.length}</span></strong>
+      Lange tippen auf ein Tier startet die Mehrfachauswahl. Pfeil-Symbol verschiebt in andere Gruppe.
+    </div>
+    <div id="bulk-bar" class="bulk-bar" style="display:none">
+      <span id="bulk-count">0 ausgewählt</span>
+      <div style="flex:1"></div>
+      <button class="btn ghost" id="bulk-cancel">Abbrechen</button>
+      <button class="btn primary" id="bulk-move">Verschieben →</button>
     </div>
     <div class="field">
       <label>Einzeln hinzufügen</label>
@@ -2321,6 +2573,17 @@ function openAnimalsEdit(groupId) {
     <div style="flex:1"></div>
     <button class="btn primary" id="animals-done">Fertig</button>
   `);
+
+  attachRowListeners();
+
+  $('#bulk-cancel').addEventListener('click', () => {
+    selectedIds.clear();
+    refreshList();
+  });
+  $('#bulk-move').addEventListener('click', () => {
+    if (selectedIds.size === 0) return;
+    openMoveAnimalsDialog([...selectedIds], g.id);
+  });
 
   $('#single-add').addEventListener('click', async () => {
     const tag = normalizeTag($('#single-tag').value);
@@ -2407,7 +2670,7 @@ async function openMoveModal() {
         ${state.groups.map(g => {
           const cur = getCurrentMovement(g.id);
           const curField = cur ? state.fields.find(f => f.id === cur.fieldId)?.name : '';
-          return `<option value="${g.id}">${escapeHtml(g.name)} (${g.count})${curField ? ' — aktuell: ' + escapeHtml(curField) : ''}</option>`;
+          return `<option value="${g.id}">${escapeHtml(g.name)} (${groupAnimalCount(g)})${curField ? ' — aktuell: ' + escapeHtml(curField) : ''}</option>`;
         }).join('')}
       </select>
     </div>
@@ -2568,7 +2831,7 @@ function openFieldDetail(fieldId) {
       </div>
       <div class="stat">
         <div class="stat-label">Tiere aktuell</div>
-        <div class="stat-value">${groups.reduce((s, g) => s + g.count, 0)}</div>
+        <div class="stat-value">${groups.reduce((s, g) => s + groupAnimalCount(g), 0)}</div>
       </div>
     </div>
     <h2 class="section-title">Historie</h2>
@@ -2629,7 +2892,7 @@ function openGroupDetail(groupId) {
       <div class="swatch-big" style="background:${g.color}"></div>
       <div>
         <h2>${escapeHtml(g.name)}</h2>
-        <div class="sub">${escapeHtml(g.category || '')} · ${g.count} Tiere${(g.animals?.length || 0) > 0 ? ` · ${g.animals.length} Ohrmarken erfasst` : ''}</div>
+        <div class="sub">${escapeHtml(g.category || '')} · ${groupAnimalCount(g)} Tiere</div>
       </div>
     </div>
     <div class="stats-grid">
